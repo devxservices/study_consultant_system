@@ -1,0 +1,94 @@
+# The whole platform on one server: PostgreSQL, the API, the web app, and
+# Caddy in front for HTTPS on every address - the platform's own and each
+# consultancy's custom domain. See deploy/README.md.
+#
+#   cd deploy
+#   cp .env.example .env      # then fill it in
+#   docker compose up -d --build
+
+name: consultancy-crm
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crm
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm -d crm"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      TZ: ${TZ:-Asia/Karachi}
+      PORT: 4000
+      DATABASE_URL: postgresql://crm:${POSTGRES_PASSWORD}@db:5432/crm
+      # Caddy puts the visitor's real address in X-Real-IP (and overwrites
+      # anything a browser sent under that name).
+      CLIENT_IP_HEADER: x-real-ip
+      STORAGE_LOCAL_DIR: /app/storage
+      MAIL_OUTBOX_DIR: /app/.data/outbox
+    volumes:
+      - files:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: web
+      args:
+        API_URL: http://api:4000
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      TZ: ${TZ:-Asia/Karachi}
+      API_URL: http://api:4000
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+
+  # Optional virus scanning of every upload. Start it with
+  #   docker compose --profile scan up -d
+  # and set VIRUS_SCAN=clamav, CLAMAV_HOST=clamav in .env.
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    profiles: ["scan"]
+
+volumes:
+  pgdata:
+  files:
+  caddy_data:
+  caddy_config:

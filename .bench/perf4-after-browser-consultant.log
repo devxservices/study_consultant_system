@@ -1,0 +1,29 @@
+# after (consultant) 2026-10-06T05:49:57.939Z
+first /desk/clients                  highlight     6  landed   154  nav 1  prefetch 12  checks 0  refreshed no 
+first /desk/reviews                  highlight     5  landed    53  nav 1  prefetch 1  checks 0  refreshed no 
+first /desk/messages                 highlight     2  landed    70  nav 1  prefetch 5  checks 0  refreshed no 
+first /desk/tasks                    highlight     3  landed    78  nav 1  prefetch 0  checks 0  refreshed no 
+first /desk/invoices                 highlight     2  landed   147  nav 1  prefetch 11  checks 0  refreshed no 
+first /desk/workload                 highlight     2  landed    60  nav 1  prefetch 0  checks 0  refreshed no 
+first /desk/team                     highlight     1  landed    51  nav 1  prefetch 0  checks 0  refreshed no 
+first /desk                          highlight     1  landed    37  nav 0  prefetch 0  checks 1  refreshed no 
+again /desk/clients                  highlight     1  landed    22  nav 0  prefetch 0  checks 1  refreshed no 
+again /desk/reviews                  highlight     1  landed    17  nav 0  prefetch 0  checks 1  refreshed no 
+again /desk/messages                 highlight     1  landed    17  nav 0  prefetch 0  checks 1  refreshed no 
+again /desk/tasks                    highlight     1  landed    19  nav 0  prefetch 0  checks 1  refreshed no 
+again /desk/invoices                 highlight     1  landed    27  nav 0  prefetch 0  checks 1  refreshed no 
+again /desk/workload                 highlight     1  landed    17  nav 0  prefetch 0  checks 1  refreshed no 
+again /desk/team                     highlight     1  landed    15  nav 0  prefetch 0  checks 1  refreshed no 
+again /desk                          highlight     1  landed    33  nav 0  prefetch 0  checks 1  refreshed no 
+search "ali" (typed)                 highlight     -  landed   395  nav 1  prefetch 1  checks 0  refreshed no 
+search cleared                       highlight     -  landed   305  nav 1  prefetch 0  checks 0  refreshed no 
+search "ali" again                   highlight     -  landed   383  nav 1  prefetch 0  checks 0  refreshed no 
+search cleared again                 highlight     -  landed   285  nav 1  prefetch 0  checks 0  refreshed no 
+stage = documents                    highlight     -  landed    35  nav 1  prefetch 0  checks 0  refreshed no 
+stage = offer letter                 highlight     -  landed    54  nav 1  prefetch 0  checks 0  refreshed no 
+stage = documents again              highlight     -  landed    34  nav 1  prefetch 0  checks 0  refreshed no 
+stage = all                          highlight     -  landed    77  nav 1  prefetch 0  checks 0  refreshed no 
+sort by name                         highlight     -  landed    64  nav 1  prefetch 1  checks 0  refreshed no 
+sort back to recent                  highlight     -  landed    53  nav 1  prefetch 0  checks 0  refreshed no 
+
+median landed: first visit 70 ms, revisit 19 ms, hover+click 365 ms

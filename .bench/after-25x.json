@@ -1,0 +1,332 @@
+{
+  "scale": 25,
+  "runs": 40,
+  "counts": {
+    "clients": 1050,
+    "audit": 404
+  },
+  "results": [
+    {
+      "name": "auth: who am I",
+      "status": 200,
+      "medianMs": 8.9,
+      "p95Ms": 10.6,
+      "queries": 1,
+      "bytes": 678
+    },
+    {
+      "name": "clients: list (25)",
+      "status": 200,
+      "medianMs": 35.2,
+      "p95Ms": 54.4,
+      "queries": 4,
+      "bytes": 18349
+    },
+    {
+      "name": "clients: search",
+      "status": 200,
+      "medianMs": 42,
+      "p95Ms": 62.3,
+      "queries": 4,
+      "bytes": 18397
+    },
+    {
+      "name": "clients: one",
+      "status": 200,
+      "medianMs": 20,
+      "p95Ms": 27.7,
+      "queries": 4,
+      "bytes": 1696
+    },
+    {
+      "name": "cases: one",
+      "status": 200,
+      "medianMs": 20.6,
+      "p95Ms": 30.5,
+      "queries": 6,
+      "bytes": 2057
+    },
+    {
+      "name": "documents: review queue",
+      "status": 200,
+      "medianMs": 36.1,
+      "p95Ms": 64.3,
+      "queries": 4,
+      "bytes": 72641
+    },
+    {
+      "name": "documents: one case",
+      "status": 200,
+      "medianMs": 19.5,
+      "p95Ms": 32,
+      "queries": 5,
+      "bytes": 4409
+    },
+    {
+      "name": "messages: threads",
+      "status": 200,
+      "medianMs": 81,
+      "p95Ms": 98.7,
+      "queries": 3,
+      "bytes": 17578
+    },
+    {
+      "name": "messages: unread",
+      "status": 200,
+      "medianMs": 14.2,
+      "p95Ms": 16.9,
+      "queries": 2,
+      "bytes": 13
+    },
+    {
+      "name": "messages: history",
+      "status": 200,
+      "medianMs": 14.7,
+      "p95Ms": 21,
+      "queries": 3,
+      "bytes": 1844
+    },
+    {
+      "name": "notifications",
+      "status": 200,
+      "medianMs": 10.9,
+      "p95Ms": 13.9,
+      "queries": 3,
+      "bytes": 23
+    },
+    {
+      "name": "analytics: kpis",
+      "status": 200,
+      "medianMs": 37.4,
+      "p95Ms": 50.3,
+      "queries": 4,
+      "bytes": 221
+    },
+    {
+      "name": "analytics: funnel",
+      "status": 200,
+      "medianMs": 15.7,
+      "p95Ms": 21.4,
+      "queries": 3,
+      "bytes": 1138
+    },
+    {
+      "name": "analytics: trends",
+      "status": 200,
+      "medianMs": 18.8,
+      "p95Ms": 26.5,
+      "queries": 4,
+      "bytes": 598
+    },
+    {
+      "name": "analytics: health",
+      "status": 200,
+      "medianMs": 22.1,
+      "p95Ms": 31.2,
+      "queries": 2,
+      "bytes": 221
+    },
+    {
+      "name": "analytics: stuck",
+      "status": 200,
+      "medianMs": 19.9,
+      "p95Ms": 23.7,
+      "queries": 3,
+      "bytes": 9987
+    },
+    {
+      "name": "analytics: activity",
+      "status": 200,
+      "medianMs": 11.7,
+      "p95Ms": 14.1,
+      "queries": 2,
+      "bytes": 2440
+    },
+    {
+      "name": "analytics: deadlines",
+      "status": 200,
+      "medianMs": 46.2,
+      "p95Ms": 71,
+      "queries": 2,
+      "bytes": 29555
+    },
+    {
+      "name": "analytics: destinations",
+      "status": 200,
+      "medianMs": 11.1,
+      "p95Ms": 15.4,
+      "queries": 2,
+      "bytes": 386
+    },
+    {
+      "name": "analytics: sources",
+      "status": 200,
+      "medianMs": 12.8,
+      "p95Ms": 14.7,
+      "queries": 2,
+      "bytes": 345
+    },
+    {
+      "name": "audit: feed",
+      "status": 200,
+      "medianMs": 18.3,
+      "p95Ms": 23.1,
+      "queries": 3,
+      "bytes": 27172
+    },
+    {
+      "name": "audit: filtered",
+      "status": 200,
+      "medianMs": 22.5,
+      "p95Ms": 27.2,
+      "queries": 3,
+      "bytes": 27937
+    },
+    {
+      "name": "billing: invoices",
+      "status": 200,
+      "medianMs": 20.8,
+      "p95Ms": 26.7,
+      "queries": 3,
+      "bytes": 10202
+    },
+    {
+      "name": "billing: totals",
+      "status": 200,
+      "medianMs": 24.2,
+      "p95Ms": 28,
+      "queries": 3,
+      "bytes": 137
+    },
+    {
+      "name": "billing: ledger",
+      "status": 200,
+      "medianMs": 24.2,
+      "p95Ms": 27,
+      "queries": 2,
+      "bytes": 23343
+    },
+    {
+      "name": "billing: revenue",
+      "status": 200,
+      "medianMs": 20.1,
+      "p95Ms": 30.8,
+      "queries": 3,
+      "bytes": 374
+    },
+    {
+      "name": "consultants: workload",
+      "status": 200,
+      "medianMs": 17.4,
+      "p95Ms": 29.4,
+      "queries": 2,
+      "bytes": 1065
+    },
+    {
+      "name": "team: members",
+      "status": 200,
+      "medianMs": 10.9,
+      "p95Ms": 18.5,
+      "queries": 3,
+      "bytes": 805
+    },
+    {
+      "name": "tasks: open",
+      "status": 200,
+      "medianMs": 21.2,
+      "p95Ms": 34.7,
+      "queries": 3,
+      "bytes": 13738
+    },
+    {
+      "name": "tasks: counts",
+      "status": 200,
+      "medianMs": 9.7,
+      "p95Ms": 10.8,
+      "queries": 2,
+      "bytes": 53
+    },
+    {
+      "name": "catalog: programmes",
+      "status": 200,
+      "medianMs": 29.7,
+      "p95Ms": 41.1,
+      "queries": 3,
+      "bytes": 17003
+    },
+    {
+      "name": "tenancy: current",
+      "status": 200,
+      "medianMs": 6.8,
+      "p95Ms": 11.1,
+      "queries": 1,
+      "bytes": 246
+    },
+    {
+      "name": "consultant: clients",
+      "status": 200,
+      "medianMs": 26.7,
+      "p95Ms": 35.5,
+      "queries": 4,
+      "bytes": 18349
+    },
+    {
+      "name": "consultant: kpis",
+      "status": 200,
+      "medianMs": 27.2,
+      "p95Ms": 36.4,
+      "queries": 4,
+      "bytes": 218
+    },
+    {
+      "name": "consultant: review queue",
+      "status": 200,
+      "medianMs": 32.2,
+      "p95Ms": 48.1,
+      "queries": 4,
+      "bytes": 66866
+    },
+    {
+      "name": "consultant: workload",
+      "status": 200,
+      "medianMs": 16.8,
+      "p95Ms": 18.4,
+      "queries": 2,
+      "bytes": 375
+    },
+    {
+      "name": "client: own record",
+      "status": 200,
+      "medianMs": 14.9,
+      "p95Ms": 23.3,
+      "queries": 3,
+      "bytes": 1696
+    },
+    {
+      "name": "client: own documents",
+      "status": 200,
+      "medianMs": 17.8,
+      "p95Ms": 22.1,
+      "queries": 5,
+      "bytes": 4409
+    },
+    {
+      "name": "client: messages",
+      "status": 200,
+      "medianMs": 13.4,
+      "p95Ms": 20.9,
+      "queries": 3,
+      "bytes": 1844
+    },
+    {
+      "name": "export: clients CSV",
+      "status": 200,
+      "medianMs": 167.5,
+      "p95Ms": 200.7,
+      "queries": 3,
+      "bytes": 308766
+    }
+  ],
+  "rssMb": 539,
+  "heapMb": 111
+}

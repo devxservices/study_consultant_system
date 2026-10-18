@@ -1,0 +1,48 @@
+# after (manager) 2026-10-06T05:47:24.452Z
+first /overview/clients              highlight     4  landed   142  nav 1  prefetch 13  checks 0  refreshed no 
+first /overview/stuck                highlight     3  landed    75  nav 1  prefetch 11  checks 0  refreshed no 
+first /overview/tasks                highlight     2  landed    94  nav 1  prefetch 5  checks 0  refreshed no 
+first /overview/finance              highlight     2  landed   143  nav 1  prefetch 12  checks 0  refreshed no 
+first /overview/consultants          highlight     3  landed    83  nav 1  prefetch 6  checks 0  refreshed no 
+first /overview/announcements        highlight     1  landed    49  nav 1  prefetch 1  checks 0  refreshed no 
+first /overview/audit                highlight     2  landed   112  nav 1  prefetch 1  checks 0  refreshed no 
+first /overview/security             highlight     4  landed   107  nav 1  prefetch 0  checks 0  refreshed no 
+first /overview/export               highlight     2  landed    54  nav 1  prefetch 0  checks 0  refreshed no 
+first /overview                      highlight     4  landed    40  nav 0  prefetch 0  checks 1  refreshed no 
+again /overview/clients              highlight     1  landed    45  nav 0  prefetch 0  checks 1  refreshed no 
+again /overview/stuck                highlight     2  landed    42  nav 0  prefetch 0  checks 1  refreshed no 
+again /overview/tasks                highlight     2  landed    33  nav 0  prefetch 0  checks 1  refreshed no 
+again /overview/finance              highlight     1  landed    36  nav 0  prefetch 0  checks 1  refreshed no 
+again /overview/consultants          highlight     1  landed    23  nav 0  prefetch 0  checks 1  refreshed no 
+again /overview/announcements        highlight     4  landed    34  nav 0  prefetch 0  checks 1  refreshed no 
+again /overview/audit                highlight     3  landed    52  nav 0  prefetch 0  checks 1  refreshed no 
+again /overview/security             highlight     3  landed    50  nav 0  prefetch 0  checks 1  refreshed no 
+again /overview/export               highlight     1  landed    23  nav 0  prefetch 0  checks 1  refreshed no 
+again /overview                      highlight     1  landed    39  nav 0  prefetch 0  checks 1  refreshed no 
+hover+click /overview/clients        highlight   370  landed   423  nav 1  prefetch 13  checks 0  refreshed no 
+hover+click /overview/stuck          highlight   321  landed   359  nav 1  prefetch 11  checks 0  refreshed no 
+hover+click /overview/tasks          highlight   301  landed   360  nav 1  prefetch 5  checks 0  refreshed no 
+hover+click /overview/finance        highlight   313  landed   355  nav 1  prefetch 12  checks 0  refreshed no 
+hover+click /overview/consultants    highlight   335  landed   375  nav 1  prefetch 6  checks 0  refreshed no 
+hover+click /overview/announcements  highlight   327  landed   355  nav 1  prefetch 1  checks 0  refreshed no 
+hover+click /overview/audit          highlight   321  landed   364  nav 1  prefetch 1  checks 0  refreshed no 
+hover+click /overview/security       highlight   307  landed   344  nav 1  prefetch 0  checks 0  refreshed no 
+hover+click /overview/export         highlight   299  landed   321  nav 1  prefetch 0  checks 0  refreshed no 
+hover+click /overview                highlight   299  landed   345  nav 0  prefetch 0  checks 1  refreshed no 
+search "ali" (typed)                 highlight     -  landed   394  nav 1  prefetch 2  checks 0  refreshed no 
+search cleared                       highlight     -  landed   344  nav 1  prefetch 0  checks 0  refreshed no 
+search "ali" again                   highlight     -  landed   397  nav 1  prefetch 0  checks 0  refreshed no 
+search cleared again                 highlight     -  landed   332  nav 1  prefetch 0  checks 0  refreshed no 
+stage = documents                    highlight     -  landed    94  nav 1  prefetch 5  checks 0  refreshed no 
+stage = offer letter                 highlight     -  landed    64  nav 1  prefetch 1  checks 0  refreshed no 
+stage = documents again              highlight     -  landed    67  nav 1  prefetch 0  checks 0  refreshed no 
+stage = all                          highlight     -  landed   101  nav 1  prefetch 0  checks 0  refreshed no 
+sort by name                         highlight     -  landed    90  nav 1  prefetch 5  checks 0  refreshed no 
+sort back to recent                  highlight     -  landed    88  nav 1  prefetch 0  checks 0  refreshed no 
+
+# freshness: a colleague changes a client while this list is kept in the browser
+colleague renamed "Ahmed Chaudhry" -> status 200
+list shown from keep first: yes; new name visible after NEVER ms
+name restored -> status 200
+
+median landed: first visit 94 ms, revisit 39 ms, hover+click 359 ms

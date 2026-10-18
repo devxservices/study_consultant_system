@@ -1,0 +1,43 @@
+# HTTPS for every address the platform serves, issued automatically on the
+# first visit: yourcrm.com, admin.yourcrm.com, <consultancy>.yourcrm.com and
+# each consultancy's own domain once it is connected.
+#
+# Before issuing a certificate Caddy asks the API whether the address is one
+# of ours (/api/tenancy/tls-check). A domain somebody points here without
+# connecting it gets nothing, so nobody can make the server request
+# certificates for addresses it does not serve.
+{
+	email {$ACME_EMAIL}
+	on_demand_tls {
+		ask http://api:4000/api/tenancy/tls-check
+	}
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	encode zstd gzip
+
+	# The API directly: data requests and the realtime sockets. The host the
+	# visitor used decides which consultancy's sign-in this is, so it is set
+	# here and replaces anything the browser sent under the same name.
+	handle /api/* {
+		reverse_proxy api:4000 {
+			header_up X-Tenant-Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Everything else is a page.
+	handle {
+		reverse_proxy web:3000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}
+
+# Plain http always moves to https (certificate challenges are answered first).
+http:// {
+	redir https://{host}{uri} permanent
+}

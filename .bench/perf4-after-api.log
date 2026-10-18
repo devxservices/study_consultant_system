@@ -1,0 +1,50 @@
+
+> @crm/api@0.1.0 bench
+> tsc -p tsconfig.test.json && node .test-build/test/perf.bench.js
+
+
+Scale 1x - 42 clients, 20 audit rows - 20 runs each (seeded in 12992 ms)
+
+endpoint                       status  median ms   p95 ms  queries     bytes
+auth: who am I                    200        4.6      6.3        1       663
+clients: list (25)                200       20.2     24.4        4     17767
+clients: search                   200        9.7     12.5        4       783
+clients: one                      200       12.7     16.4        4      1707
+cases: one                        200        9.0     10.9        5      2040
+documents: review queue           200       10.7     12.2        4     17213
+documents: one case               200        8.2     11.3        5      4409
+messages: threads                 200        8.1      9.7        3      8416
+messages: unread                  200        4.3      5.9        2        12
+messages: history                 200        6.4      7.4        3      1844
+notifications                     200        4.2      6.9        2        23
+analytics: kpis                   200        6.8     11.5        4       211
+analytics: funnel                 200        3.8      4.7        2      1116
+analytics: trends                 200        5.7      7.1        4       571
+analytics: health                 200        5.3      8.6        2       216
+analytics: stuck                  200        6.4      8.7        3      2401
+analytics: activity               200        4.6      6.8        2      2483
+analytics: deadlines              200        5.9      8.7        2      5872
+analytics: destinations           200        3.8      5.8        2       364
+analytics: sources                200        4.1      4.7        2       326
+audit: feed                       200        5.6      7.3        3     11049
+audit: filtered                   200        7.5      9.4        3      8951
+billing: invoices                 200        6.4      8.4        3      9954
+billing: totals                   200        7.2      8.6        3       129
+billing: ledger                   200        6.7      8.1        2     22750
+billing: revenue                  200        5.0      7.2        3       365
+consultants: workload             200        5.2      6.9        2      1055
+team: members                     200        3.8      5.3        3       805
+tasks: open                       200        6.6      8.4        3     10878
+tasks: counts                     200        3.3      4.0        2        47
+tenancy: current                  200        0.5      0.6        0       246
+consultant: clients               200        8.4     11.2        4      9256
+consultant: kpis                  200        5.9      9.4        4       208
+consultant: review queue          200        6.4      7.2        4      2712
+consultant: workload              200        5.0      5.5        2       371
+client: own record                200        6.5      8.2        3      1707
+client: own documents             200        6.8      9.4        5      4409
+client: messages                  200        5.6      7.0        3      1844
+export: clients CSV               200        8.4     16.4        3     12394
+
+sum of medians 255.3 ms, sum of queries 115; rss 462 MB, heap 53 MB
+exit=0

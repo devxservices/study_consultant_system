@@ -1,0 +1,539 @@
+{
+  "runs": 15,
+  "results": [
+    {
+      "name": "manager: overview",
+      "url": "/overview",
+      "status": 200,
+      "medianMs": 260,
+      "p95Ms": 319.1,
+      "apiCalls": 14,
+      "queries": 35,
+      "bytes": 152711,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/tenancy/entitlements",
+        "GET /api/notifications?limit=20",
+        "GET /api/analytics/kpis",
+        "GET /api/analytics/trends?months=10",
+        "GET /api/analytics/activity?limit=8",
+        "GET /api/analytics/deadlines?days=30",
+        "GET /api/analytics/destinations",
+        "GET /api/analytics/sources",
+        "GET /api/billing/totals",
+        "GET /api/tasks/counts?scope=all",
+        "GET /api/announcements",
+        "GET /api/analytics/stuck?pageSize=1"
+      ]
+    },
+    {
+      "name": "manager: clients",
+      "url": "/overview/clients",
+      "status": 200,
+      "medianMs": 227.8,
+      "p95Ms": 310.1,
+      "apiCalls": 8,
+      "queries": 20,
+      "bytes": 315086,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/clients?page=1&pageSize=25&sort=recent",
+        "GET /api/consultants",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/analytics/stuck?pageSize=1",
+        "GET /api/tasks/counts?scope=all"
+      ]
+    },
+    {
+      "name": "manager: one client",
+      "url": "/overview/clients/b02d956c-97ff-42dd-95ba-7addef6becb7",
+      "status": 200,
+      "medianMs": 206.6,
+      "p95Ms": 292.8,
+      "apiCalls": 11,
+      "queries": 29,
+      "bytes": 115037,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/clients/b02d956c-97ff-42dd-95ba-7addef6becb7",
+        "GET /api/analytics/stuck?pageSize=1",
+        "GET /api/tasks/counts?scope=all",
+        "GET /api/tasks?view=open&clientId=b02d956c-97ff-42dd-95ba-7addef6becb7&pageSize=50",
+        "GET /api/billing/invoices?clientId=b02d956c-97ff-42dd-95ba-7addef6becb7&pageSize=50",
+        "GET /api/billing/totals?clientId=b02d956c-97ff-42dd-95ba-7addef6becb7",
+        "GET /api/tasks/assignees"
+      ]
+    },
+    {
+      "name": "manager: one case",
+      "url": "/overview/cases/52f4a62e-2351-4f88-be8f-bd51ccc4b32e",
+      "status": 200,
+      "medianMs": 244.6,
+      "p95Ms": 345.3,
+      "apiCalls": 12,
+      "queries": 36,
+      "bytes": 124274,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/cases/52f4a62e-2351-4f88-be8f-bd51ccc4b32e",
+        "GET /api/analytics/stuck?pageSize=1",
+        "GET /api/tasks/counts?scope=all",
+        "GET /api/documents?caseId=52f4a62e-2351-4f88-be8f-bd51ccc4b32e&pageSize=100&sort=newest",
+        "GET /api/messages?caseId=52f4a62e-2351-4f88-be8f-bd51ccc4b32e&limit=50",
+        "GET /api/tasks?view=open&caseId=52f4a62e-2351-4f88-be8f-bd51ccc4b32e&pageSize=50",
+        "GET /api/billing/invoices?caseId=52f4a62e-2351-4f88-be8f-bd51ccc4b32e&pageSize=50",
+        "GET /api/tasks/assignees"
+      ]
+    },
+    {
+      "name": "manager: not moving",
+      "url": "/overview/stuck",
+      "status": 200,
+      "medianMs": 136.4,
+      "p95Ms": 192,
+      "apiCalls": 8,
+      "queries": 19,
+      "bytes": 67003,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/analytics/stuck?page=1&pageSize=25",
+        "GET /api/consultants",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/analytics/stuck?pageSize=1",
+        "GET /api/tasks/counts?scope=all"
+      ]
+    },
+    {
+      "name": "manager: tasks",
+      "url": "/overview/tasks",
+      "status": 200,
+      "medianMs": 128.1,
+      "p95Ms": 155.1,
+      "apiCalls": 8,
+      "queries": 19,
+      "bytes": 96695,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/tasks/counts?scope=all",
+        "GET /api/tasks?view=overdue&page=1&pageSize=30",
+        "GET /api/tasks/assignees",
+        "GET /api/analytics/stuck?pageSize=1"
+      ]
+    },
+    {
+      "name": "manager: finance",
+      "url": "/overview/finance",
+      "status": 200,
+      "medianMs": 205.5,
+      "p95Ms": 218.5,
+      "apiCalls": 10,
+      "queries": 25,
+      "bytes": 166580,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/billing/totals",
+        "GET /api/billing/revenue?months=6",
+        "GET /api/billing/invoices?status=all&page=1&pageSize=20",
+        "GET /api/billing/payments?limit=8",
+        "GET /api/analytics/stuck?pageSize=1",
+        "GET /api/tasks/counts?scope=all"
+      ]
+    },
+    {
+      "name": "manager: team",
+      "url": "/overview/consultants",
+      "status": 200,
+      "medianMs": 146.3,
+      "p95Ms": 205.6,
+      "apiCalls": 8,
+      "queries": 19.1,
+      "bytes": 91210,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/consultants?includeInactive=true",
+        "GET /api/team",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/analytics/stuck?pageSize=1",
+        "GET /api/tasks/counts?scope=all"
+      ]
+    },
+    {
+      "name": "manager: catalogue",
+      "url": "/overview/catalog",
+      "status": 200,
+      "medianMs": 183.6,
+      "p95Ms": 231.8,
+      "apiCalls": 9,
+      "queries": 21,
+      "bytes": 147111,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/catalog/countries",
+        "GET /api/catalog/universities",
+        "GET /api/catalog/programs?page=1&pageSize=30",
+        "GET /api/analytics/stuck?pageSize=1",
+        "GET /api/tasks/counts?scope=all"
+      ]
+    },
+    {
+      "name": "manager: audit trail",
+      "url": "/overview/audit",
+      "status": 200,
+      "medianMs": 151.5,
+      "p95Ms": 287,
+      "apiCalls": 8,
+      "queries": 19,
+      "bytes": 130659,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/analytics/audit?page=1&pageSize=50",
+        "GET /api/analytics/audit/people",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/analytics/stuck?pageSize=1",
+        "GET /api/tasks/counts?scope=all"
+      ]
+    },
+    {
+      "name": "manager: security",
+      "url": "/overview/security",
+      "status": 200,
+      "medianMs": 132.6,
+      "p95Ms": 193.9,
+      "apiCalls": 10,
+      "queries": 24,
+      "bytes": 112641,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/team/security",
+        "GET /api/team",
+        "GET /api/team/defaults",
+        "GET /api/analytics/audit?category=team&pageSize=8",
+        "GET /api/analytics/stuck?pageSize=1",
+        "GET /api/tasks/counts?scope=all"
+      ]
+    },
+    {
+      "name": "consultant: dashboard",
+      "url": "/desk",
+      "status": 200,
+      "medianMs": 297.8,
+      "p95Ms": 417,
+      "apiCalls": 18,
+      "queries": 47,
+      "bytes": 153437,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/tasks?view=overdue&assignee=me&pageSize=10",
+        "GET /api/tasks?view=today&assignee=me&pageSize=10",
+        "GET /api/analytics/deadlines?days=21",
+        "GET /api/announcements",
+        "GET /api/consultants/me",
+        "GET /api/messages/unread",
+        "GET /api/tasks/counts",
+        "GET /api/analytics/kpis",
+        "GET /api/analytics/trends?months=6",
+        "GET /api/analytics/health",
+        "GET /api/analytics/funnel",
+        "GET /api/analytics/stuck?pageSize=4",
+        "GET /api/documents?status=pending&pageSize=5&sort=oldest",
+        "GET /api/analytics/activity?limit=7"
+      ]
+    },
+    {
+      "name": "consultant: clients",
+      "url": "/desk/clients",
+      "status": 200,
+      "medianMs": 174.1,
+      "p95Ms": 223.3,
+      "apiCalls": 8,
+      "queries": 19,
+      "bytes": 185863,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/clients?page=1&pageSize=25&sort=recent",
+        "GET /api/consultants/me",
+        "GET /api/messages/unread",
+        "GET /api/tasks/counts"
+      ]
+    },
+    {
+      "name": "consultant: one client",
+      "url": "/desk/clients/b02d956c-97ff-42dd-95ba-7addef6becb7",
+      "status": 200,
+      "medianMs": 200.8,
+      "p95Ms": 274.4,
+      "apiCalls": 11,
+      "queries": 28,
+      "bytes": 112018,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/clients/b02d956c-97ff-42dd-95ba-7addef6becb7",
+        "GET /api/consultants/me",
+        "GET /api/messages/unread",
+        "GET /api/tasks/counts",
+        "GET /api/tasks?view=open&clientId=b02d956c-97ff-42dd-95ba-7addef6becb7&pageSize=50",
+        "GET /api/billing/invoices?clientId=b02d956c-97ff-42dd-95ba-7addef6becb7&pageSize=50",
+        "GET /api/billing/totals?clientId=b02d956c-97ff-42dd-95ba-7addef6becb7"
+      ]
+    },
+    {
+      "name": "consultant: one case",
+      "url": "/desk/cases/52f4a62e-2351-4f88-be8f-bd51ccc4b32e",
+      "status": 200,
+      "medianMs": 177.3,
+      "p95Ms": 267.4,
+      "apiCalls": 12,
+      "queries": 35,
+      "bytes": 120615,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/cases/52f4a62e-2351-4f88-be8f-bd51ccc4b32e",
+        "GET /api/consultants/me",
+        "GET /api/messages/unread",
+        "GET /api/tasks/counts",
+        "GET /api/documents?caseId=52f4a62e-2351-4f88-be8f-bd51ccc4b32e&pageSize=100&sort=newest",
+        "GET /api/messages?caseId=52f4a62e-2351-4f88-be8f-bd51ccc4b32e&limit=50",
+        "GET /api/tasks?view=open&caseId=52f4a62e-2351-4f88-be8f-bd51ccc4b32e&pageSize=50",
+        "GET /api/billing/invoices?caseId=52f4a62e-2351-4f88-be8f-bd51ccc4b32e&pageSize=50"
+      ]
+    },
+    {
+      "name": "consultant: to review",
+      "url": "/desk/reviews",
+      "status": 200,
+      "medianMs": 110.2,
+      "p95Ms": 133.4,
+      "apiCalls": 8,
+      "queries": 19,
+      "bytes": 64025,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/documents?status=pending&pageSize=100&sort=oldest",
+        "GET /api/consultants/me",
+        "GET /api/messages/unread",
+        "GET /api/tasks/counts"
+      ]
+    },
+    {
+      "name": "consultant: messages",
+      "url": "/desk/messages",
+      "status": 200,
+      "medianMs": 105.8,
+      "p95Ms": 177.1,
+      "apiCalls": 8,
+      "queries": 18.1,
+      "bytes": 61909,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/messages/threads",
+        "GET /api/consultants/me",
+        "GET /api/messages/unread",
+        "GET /api/tasks/counts"
+      ]
+    },
+    {
+      "name": "consultant: tasks",
+      "url": "/desk/tasks",
+      "status": 200,
+      "medianMs": 95.5,
+      "p95Ms": 130.6,
+      "apiCalls": 8,
+      "queries": 18.1,
+      "bytes": 75278,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/tasks/counts",
+        "GET /api/tasks?view=overdue&page=1&pageSize=30",
+        "GET /api/consultants/me",
+        "GET /api/messages/unread"
+      ]
+    },
+    {
+      "name": "consultant: workload",
+      "url": "/desk/workload",
+      "status": 200,
+      "medianMs": 105.4,
+      "p95Ms": 112.2,
+      "apiCalls": 7,
+      "queries": 15,
+      "bytes": 62731,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/consultants/me",
+        "GET /api/messages/unread",
+        "GET /api/tasks/counts"
+      ]
+    },
+    {
+      "name": "client: overview",
+      "url": "/portal",
+      "status": 200,
+      "medianMs": 107.8,
+      "p95Ms": 163,
+      "apiCalls": 9,
+      "queries": 24,
+      "bytes": 70592,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/messages/unread",
+        "GET /api/clients/b02d956c-97ff-42dd-95ba-7addef6becb7",
+        "GET /api/cases/52f4a62e-2351-4f88-be8f-bd51ccc4b32e",
+        "GET /api/billing/totals",
+        "GET /api/announcements"
+      ]
+    },
+    {
+      "name": "client: progress",
+      "url": "/portal/progress",
+      "status": 200,
+      "medianMs": 109.1,
+      "p95Ms": 119.4,
+      "apiCalls": 7,
+      "queries": 19,
+      "bytes": 57931,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/messages/unread",
+        "GET /api/clients/b02d956c-97ff-42dd-95ba-7addef6becb7",
+        "GET /api/cases/52f4a62e-2351-4f88-be8f-bd51ccc4b32e"
+      ]
+    },
+    {
+      "name": "client: documents",
+      "url": "/portal/documents",
+      "status": 200,
+      "medianMs": 94.4,
+      "p95Ms": 128.6,
+      "apiCalls": 8,
+      "queries": 24,
+      "bytes": 55164,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/messages/unread",
+        "GET /api/clients/b02d956c-97ff-42dd-95ba-7addef6becb7",
+        "GET /api/cases/52f4a62e-2351-4f88-be8f-bd51ccc4b32e",
+        "GET /api/documents?caseId=52f4a62e-2351-4f88-be8f-bd51ccc4b32e&pageSize=100&sort=newest"
+      ]
+    },
+    {
+      "name": "client: payments",
+      "url": "/portal/payments",
+      "status": 200,
+      "medianMs": 110.3,
+      "p95Ms": 127,
+      "apiCalls": 8,
+      "queries": 19,
+      "bytes": 62429,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/messages/unread",
+        "GET /api/billing/totals",
+        "GET /api/billing/invoices?pageSize=50",
+        "GET /api/billing/payments?limit=50"
+      ]
+    },
+    {
+      "name": "client: messages",
+      "url": "/portal/messages",
+      "status": 200,
+      "medianMs": 97.8,
+      "p95Ms": 126.1,
+      "apiCalls": 8,
+      "queries": 22,
+      "bytes": 45533,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me",
+        "GET /api/notifications?limit=20",
+        "GET /api/tenancy/entitlements",
+        "GET /api/messages/unread",
+        "GET /api/clients/b02d956c-97ff-42dd-95ba-7addef6becb7",
+        "GET /api/cases/52f4a62e-2351-4f88-be8f-bd51ccc4b32e",
+        "GET /api/messages?caseId=52f4a62e-2351-4f88-be8f-bd51ccc4b32e&limit=50"
+      ]
+    },
+    {
+      "name": "sign-in page",
+      "url": "/sign-in",
+      "status": 200,
+      "medianMs": 8.3,
+      "p95Ms": 16.6,
+      "apiCalls": 2,
+      "queries": 0,
+      "bytes": 16678,
+      "requests": [
+        "GET /api/tenancy/current",
+        "GET /api/auth/me"
+      ]
+    }
+  ],
+  "bundle": {
+    "jsKb": 1341,
+    "cssKb": 55,
+    "files": 104
+  },
+  "routes": "Route (app)                                     Size  First Load JS\n┌ ƒ /                                          124 B         103 kB\n├ ƒ /_not-found                                986 B         104 kB\n├ ƒ /admin                                     189 B         106 kB\n├ ƒ /admin/account                             922 B         114 kB\n├ ƒ /admin/plans                             4.29 kB         141 kB\n├ ƒ /admin/tenants/[id]                      6.77 kB         143 kB\n├ ƒ /admin/tenants/new                       3.63 kB         113 kB\n├ ƒ /desk                                    3.93 kB         144 kB\n├ ƒ /desk/account                              922 B         114 kB\n├ ƒ /desk/audit                                189 B         106 kB\n├ ƒ /desk/cases/[id]                           145 B         163 kB\n├ ƒ /desk/catalog                              189 B         106 kB\n├ ƒ /desk/catalog/programs/[id]                196 B         142 kB\n├ ƒ /desk/catalog/programs/new                 196 B         142 kB\n├ ƒ /desk/catalog/universities/[id]            195 B         142 kB\n├ ƒ /desk/catalog/universities/new             195 B         142 kB\n├ ƒ /desk/clients                            2.09 kB         139 kB\n├ ƒ /desk/clients/[id]                        2.6 kB         143 kB\n├ ƒ /desk/clients/[id]/applications/new        136 B         141 kB\n├ ƒ /desk/clients/[id]/edit                    136 B         142 kB\n├ ƒ /desk/clients/new                          136 B         142 kB\n├ ƒ /desk/export                               177 B         106 kB\n├ ƒ /desk/invoices                           1.54 kB         135 kB\n├ ƒ /desk/invoices/[id]                      3.31 kB         140 kB\n├ ƒ /desk/invoices/new                         137 B         142 kB\n├ ƒ /desk/invoices/receipts/[id]             3.31 kB         140 kB\n├ ƒ /desk/messages                             189 B         106 kB\n├ ƒ /desk/reviews                            3.15 kB         140 kB\n├ ƒ /desk/tasks                              1.47 kB         142 kB\n├ ƒ /desk/team                               3.09 kB         112 kB\n├ ƒ /desk/team/new                           1.77 kB         111 kB\n├ ƒ /desk/workload                             177 B         106 kB\n├ ○ /icon.svg                                    0 B            0 B\n├ ƒ /overview                                2.25 kB         111 kB\n├ ƒ /overview/account                          922 B         114 kB\n├ ƒ /overview/announcements                  2.91 kB         139 kB\n├ ƒ /overview/audit                            189 B         106 kB\n├ ƒ /overview/cases/[id]                       146 B         163 kB\n├ ƒ /overview/catalog                          189 B         106 kB\n├ ƒ /overview/catalog/programs/[id]            196 B         142 kB\n├ ƒ /overview/catalog/programs/new             196 B         142 kB\n├ ƒ /overview/catalog/universities/[id]        195 B         142 kB\n├ ƒ /overview/catalog/universities/new         195 B         142 kB\n├ ƒ /overview/clients                        2.09 kB         139 kB\n├ ƒ /overview/clients/[id]                   3.08 kB         143 kB\n├ ƒ /overview/clients/[id]/applications/new    136 B         141 kB\n├ ƒ /overview/clients/[id]/edit                136 B         142 kB\n├ ƒ /overview/clients/new                      135 B         142 kB\n├ ƒ /overview/consultants                    3.09 kB         112 kB\n├ ƒ /overview/consultants/[id]                 187 B         142 kB\n├ ƒ /overview/consultants/new                1.77 kB         111 kB\n├ ƒ /overview/export                           177 B         106 kB\n├ ƒ /overview/finance                        1.54 kB         135 kB\n├ ƒ /overview/finance/invoices/[id]          3.31 kB         140 kB\n├ ƒ /overview/finance/new                      137 B         142 kB\n├ ƒ /overview/finance/packages               3.57 kB         140 kB\n├ ƒ /overview/finance/receipts/[id]          3.31 kB         140 kB\n├ ƒ /overview/security                        1.6 kB         143 kB\n├ ƒ /overview/stuck                            189 B         106 kB\n├ ƒ /overview/tasks                          1.47 kB         142 kB\n├ ƒ /portal                                    189 B         106 kB\n├ ƒ /portal/account                            922 B         114 kB\n├ ƒ /portal/documents                        4.54 kB         141 kB\n├ ƒ /portal/messages                           188 B         153 kB\n├ ƒ /portal/payments                           189 B         106 kB\n├ ƒ /portal/payments/invoices/[id]           3.31 kB         140 kB\n├ ƒ /portal/payments/receipts/[id]           3.31 kB         140 kB\n├ ƒ /portal/progress                           177 B         106 kB\n├ ƒ /security/setup                            700 B         114 kB\n└ ƒ /sign-in                                 2.14 kB         136 kB\n+ First Load JS shared by all                 103 kB\n  ├ chunks/18-2c82660ce7c4918d.js            46.4 kB\n  ├ chunks/87c73c54-24122e7b92478d00.js      54.2 kB\n  └ other shared chunks (total)                 2 kB\n\n\nƒ Middleware                                 34.5 kB\n\n○  (Static)   prerendered as static content\nƒ  (Dynamic)  server-rendered on demand\n\n"
+}

@@ -1,0 +1,52 @@
+
+> @crm/web@0.1.0 bench
+> node bench/pages.bench.mjs
+
+
+15 renders of each page
+
+page                       status  median ms   p95 ms  API calls  queries    bytes
+manager: overview             200       92.2    104.5         14       31   150848
+manager: clients              200       64.8     75.8          8       16   313451
+manager: one client           200       64.4     79.0         11       25   115776
+manager: one case             200       69.6     77.4         12       31   125066
+manager: not moving           200       40.0     46.8          8       15    65368
+manager: tasks                200       39.5     43.8          8       15    95730
+manager: finance              200       61.5     73.9         10       21   164736
+manager: team                 200       38.5     46.2          8       15    89575
+manager: audit trail          200       43.4     52.0          8       15   129006
+manager: security             200       44.4     50.3         10       20   109252
+consultant: dashboard         200       86.0     91.0         18       42   150301
+consultant: clients           200       46.0     74.3          8       15   184246
+consultant: one client        200       54.6     70.0         11       24   112691
+consultant: one case          200       62.4     69.2         12       30   121363
+consultant: to review         200       35.6     41.3          8       15    62408
+consultant: messages          200       34.8     42.7          8       14    60292
+consultant: tasks             200       36.3     39.2          8       14    76586
+consultant: workload          200       29.6     31.9          7       11    61114
+client: overview              200       41.4     45.4          9       19    70554
+client: progress              200       32.2     36.8          7       14    57911
+client: documents             200       36.2     40.2          8       19    55164
+client: payments              200       36.5     43.2          8       15    60175
+client: messages              200       52.0     58.6          8       17    45533
+sign-in page                  200        8.2     15.8          2        0    16678
+
+sum of medians 1150.1 ms; per pass: 219 API calls, 453 queries
+browser bundle: 1325 KB script, 54 KB styles, 92 files
+Error: ENOENT: no such file or directory, open 'D:\App\consultant_crm\apps\web\.bench\redesign-before-pages.json'
+    at Object.writeFileSync (node:fs:2422:20)
+    at main (file:///D:/App/consultant_crm/apps/web/bench/pages.bench.mjs:316:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'D:\\App\\consultant_crm\\apps\\web\\.bench\\redesign-before-pages.json'
+}
+npm error Lifecycle script `bench` failed with error:
+npm error code 1
+npm error path D:\App\consultant_crm\apps\web
+npm error workspace @crm/web@0.1.0
+npm error location D:\App\consultant_crm\apps\web
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c node bench/pages.bench.mjs
+EXIT 1

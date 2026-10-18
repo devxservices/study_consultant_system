@@ -1,0 +1,8 @@
+# Files that run on the Linux server keep Linux line endings, whatever the
+# checkout's settings: a shell script with Windows line endings fails there
+# with "$'\r': command not found".
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf
+deploy/Dockerfile text eol=lf
+deploy/*.yml text eol=lf
+deploy/.env.example text eol=lf

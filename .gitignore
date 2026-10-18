@@ -1,0 +1,31 @@
+node_modules/
+dist/
+.test-build/
+build/
+.next/
+out/
+
+# Local-first data: embedded Postgres + local object storage
+.data/
+storage/
+
+# Secrets: every env file except the documented examples (root and deploy/)
+.env
+.env.*
+!.env.example
+*.local
+
+# Production database dumps written by deploy/backup.sh
+deploy/backups/
+*.dump
+
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+.probe/
+coverage/
+*.tsbuildinfo
+
+# Benchmark results the README cites
+!.bench/*.log

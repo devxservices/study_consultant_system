@@ -1,0 +1,31 @@
+# before (manager) 2026-10-06T05:24:05.778Z
+first /overview/clients            highlight     4  skeleton    37  landed   701  rsc 1 prefetch 13 api 0
+first /overview/stuck              highlight     8  skeleton    35  landed   374  rsc 1 prefetch 11 api 0
+first /overview/tasks              highlight     3  skeleton    18  landed   331  rsc 1 prefetch 5 api 0
+first /overview/finance            highlight     2  skeleton    30  landed   377  rsc 1 prefetch 12 api 0
+first /overview/consultants        highlight     6  skeleton    45  landed   394  rsc 1 prefetch 6 api 0
+first /overview/announcements      highlight     2  skeleton    17  landed   336  rsc 1 prefetch 0 api 0
+first /overview/audit              highlight     1  skeleton    16  landed   353  rsc 1 prefetch 1 api 0
+first /overview/security           highlight     3  skeleton    19  landed   370  rsc 1 prefetch 0 api 0
+first /overview/export             highlight     3  skeleton    19  landed   345  rsc 1 prefetch 0 api 0
+first /overview                    highlight     3  skeleton    30  landed   341  rsc 1 prefetch 1 api 0
+again /overview/clients            highlight     4  skeleton    21  landed   363  rsc 1 prefetch 0 api 0
+again /overview/stuck              highlight     2  skeleton    20  landed   354  rsc 1 prefetch 0 api 0
+again /overview/tasks              highlight     3  skeleton    28  landed   327  rsc 1 prefetch 0 api 0
+again /overview/finance            highlight     2  skeleton    13  landed   344  rsc 1 prefetch 0 api 0
+again /overview/consultants        highlight     2  skeleton    18  landed   346  rsc 1 prefetch 0 api 0
+again /overview/announcements      highlight     2  skeleton    19  landed   323  rsc 1 prefetch 0 api 0
+again /overview/audit              highlight     5  skeleton    32  landed   365  rsc 1 prefetch 0 api 0
+again /overview/security           highlight     2  skeleton    16  landed   370  rsc 1 prefetch 0 api 0
+again /overview/export             highlight     2  skeleton    12  landed   338  rsc 1 prefetch 0 api 0
+again /overview                    highlight     3  skeleton    18  landed   352  rsc 1 prefetch 0 api 0
+search "ali"                       highlight    -   skeleton    -   landed   363  rsc 1 prefetch 2 api 0
+search cleared                     highlight    -   skeleton    -   landed     5  rsc 1 prefetch 0 api 0
+search "ali" again                 highlight    -   skeleton    -   landed     9  rsc 1 prefetch 0 api 0
+filter stage=documents             highlight    -   skeleton    -   landed    -   rsc 1 prefetch 0 api 0 TIMEOUT /overview/clients
+filter stage=offer                 highlight    -   skeleton    -   landed    53  rsc 1 prefetch 2 api 0
+filter back to documents           highlight    -   skeleton    -   landed    -   rsc 1 prefetch 0 api 0 TIMEOUT /overview/clients?stage=offer_letter
+sort by name                       highlight    -   skeleton    -   landed   161  rsc 1 prefetch 7 api 0
+page 2                             highlight    -   skeleton    -   landed   143  rsc 1 prefetch 8 api 0
+page 1 again                       highlight    -   skeleton    -   landed   136  rsc 1 prefetch 0 api 0
+median landed: first visit 370 ms, revisit 352 ms

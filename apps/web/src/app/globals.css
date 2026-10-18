@@ -1,0 +1,589 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens.
+ *
+ * A navy navigation rail, a pale blue-grey canvas and white cards, one brand
+ * colour (royal blue by default, or the consultancy's own), and three status
+ * colours that mean exactly one thing each across every portal:
+ *   green  = verified / complete
+ *   amber  = pending / needs attention
+ *   red    = rejected / blocked
+ * A tint is never decoration. Icon tiles and pills take the tone the number
+ * already carries everywhere else - blue for a plain count, the status colour
+ * for a status - so a red tile and a red pill always mean the same thing.
+ */
+@theme {
+  /* Neutral ramp: navy-tinted greys, so text and hairlines belong to the same
+     family as the rail rather than reading as flat grey. */
+  --color-ink-950: #0f1b35;
+  --color-ink-900: #1c2945;
+  --color-ink-800: #2e3b58;
+  --color-ink-700: #46536e;
+  --color-ink-600: #5a6782;
+  --color-ink-500: #636e87;
+  --color-ink-400: #8a94aa;
+  --color-ink-300: #b6bece;
+  --color-ink-200: #d9dfe8;
+  --color-ink-100: #eaeef4;
+  --color-ink-50: #f5f7fa;
+
+  --color-canvas: #f3f5f9;
+  --color-paper: #ffffff;
+  --color-line: #ebeef4;
+  --color-line-strong: #dce1ea;
+
+  /* The navigation rail: deep navy, in both themes. */
+  --color-rail-950: #141f3a;
+  --color-rail-900: #182444;
+  --color-rail-800: #213052;
+  --color-rail-700: #2c3c63;
+  --color-rail-line: #22304f;
+  --color-rail-ink: #f1f4fb;
+  --color-rail-muted: #a3aecb;
+  --color-rail-dim: #7381a6;
+
+  /* Brand - royal blue. Primary buttons, links and the active state. A
+     consultancy's own colour replaces this whole ramp at request time
+     (lib/brand.ts). `600` carries white text at 5.3:1. */
+  --color-brand-900: #1f2f86;
+  --color-brand-800: #2639b0;
+  --color-brand-700: #2f48d4;
+  --color-brand-600: #3d5af1;
+  --color-brand-500: #5a75f4;
+  --color-brand-400: #8297f7;
+  --color-brand-200: #c8d2fc;
+  --color-brand-100: #e2e8fd;
+  --color-brand-50: #eff2fe;
+
+  /* Information - "this is a count", a tag, a role. Always this blue, never
+     the consultancy's colour: a consultancy may brand itself green or red, and
+     an informational tag must never read as a status. */
+  --color-info-700: #2f48d4;
+  --color-info-600: #3d5af1;
+  --color-info-500: #5a75f4;
+  --color-info-200: #c8d2fc;
+  --color-info-100: #e2e8fd;
+  --color-info-50: #eff2fe;
+
+  /* Verified / complete */
+  --color-ok-700: #0a7a4a;
+  --color-ok-600: #0e8c55;
+  --color-ok-500: #17a865;
+  --color-ok-200: #a6e3c4;
+  --color-ok-100: #d3f3e2;
+  --color-ok-50: #ebf9f1;
+
+  /* Pending / attention */
+  --color-warn-700: #9a5800;
+  --color-warn-600: #c27400;
+  --color-warn-500: #f2a516;
+  --color-warn-200: #fad79a;
+  --color-warn-100: #fdebc6;
+  --color-warn-50: #fff7e8;
+
+  /* Rejected / blocked */
+  --color-bad-700: #b42330;
+  --color-bad-600: #d63a45;
+  --color-bad-500: #ec4d58;
+  --color-bad-200: #f7bcc0;
+  --color-bad-100: #fcdfe1;
+  --color-bad-50: #fdf0f1;
+
+  /* Chart series, in fixed order: blue, teal, coral. Fixed, not the brand, so
+     a consultancy's colour can never collide with a series. Validated with the
+     dataviz palette checker against the card surface in each theme, every
+     pair (lines cross): light worst colour-blind separation delta-E 8.4,
+     normal vision 28.6, all three >= 3:1 on white. Dark values below. A fourth
+     series is never added - it folds into "other" or becomes a second chart. */
+  --color-series-1: #3d5af1;
+  --color-series-2: #12a383;
+  --color-series-3: #f0645f;
+
+  /* Rubik, self-hosted from the app's own origin (app/fonts), so there is no
+     third-party request and the app still works with no network. The system
+     stack stands in, metric-matched, until it arrives. */
+  --font-sans:
+    var(--font-rubik), 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+
+  /* Cards sit on a tinted canvas with a soft, navy-tinted lift. Shadows
+     separate planes; they never carry meaning. */
+  --shadow-card: 0 1px 2px rgb(15 27 53 / 0.04), 0 3px 14px -2px rgb(15 27 53 / 0.06);
+  --shadow-raise: 0 2px 6px rgb(15 27 53 / 0.05), 0 16px 32px -12px rgb(15 27 53 / 0.2);
+  --shadow-pop: 0 4px 12px rgb(15 27 53 / 0.07), 0 22px 44px -14px rgb(15 27 53 / 0.28);
+  --shadow-sticky: 0 1px 0 rgb(15 27 53 / 0.06), 0 8px 20px -14px rgb(15 27 53 / 0.25);
+  --shadow-tile: 0 1px 2px rgb(15 27 53 / 0.05), 0 2px 8px -2px rgb(15 27 53 / 0.06);
+
+  --ease-smooth: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/*
+ * Dark theme.
+ *
+ * Every colour in this product is a semantic token, and every utility compiles
+ * to `var(--color-*)`, so a whole dark theme is a matter of redefining those
+ * variables once - no component knows or cares which theme is live. The ramps
+ * keep their meaning (50 = the subtlest surface tint, 950 = the strongest text)
+ * and only their lightness is inverted.
+ */
+:root {
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-ink-950: #f2f5fb;
+  --color-ink-900: #e2e7f0;
+  --color-ink-800: #cbd2df;
+  --color-ink-700: #b3bccd;
+  --color-ink-600: #9ca6b9;
+  --color-ink-500: #8691a7;
+  --color-ink-400: #6c778e;
+  --color-ink-300: #4b556b;
+  --color-ink-200: #333d53;
+  --color-ink-100: #253046;
+  --color-ink-50: #1a2338;
+
+  --color-canvas: #0b1222;
+  --color-paper: #141c2f;
+  --color-line: #222c42;
+  --color-line-strong: #2e3a52;
+
+  --color-rail-950: #0f1729;
+  --color-rail-900: #131c31;
+  --color-rail-800: #1b2540;
+  --color-rail-700: #26324f;
+  --color-rail-line: #1d2741;
+  --color-rail-ink: #eef2fa;
+  --color-rail-muted: #9aa6c2;
+  --color-rail-dim: #6b789b;
+
+  /* Brand on dark: the fill stays saturated enough for white text (4.9:1);
+     the high steps become the light text used for links and active labels. */
+  --color-brand-900: #e6ebfe;
+  --color-brand-800: #cbd5fd;
+  --color-brand-700: #a9b8fb;
+  --color-brand-600: #4a63ec;
+  --color-brand-500: #6c84f5;
+  --color-brand-400: #8a9ef7;
+  --color-brand-200: #2b3a72;
+  --color-brand-100: #1f2b55;
+  --color-brand-50: #1a2445;
+
+  --color-info-700: #a9b8fb;
+  --color-info-600: #7d93f7;
+  --color-info-500: #6c84f5;
+  --color-info-200: #2b3a72;
+  --color-info-100: #1f2b55;
+  --color-info-50: #1a2445;
+
+  --color-ok-700: #6fdcaa;
+  --color-ok-600: #34c486;
+  --color-ok-500: #22b073;
+  --color-ok-200: #1e5a42;
+  --color-ok-100: #133c2d;
+  --color-ok-50: #0f2a22;
+
+  --color-warn-700: #f6c56a;
+  --color-warn-600: #eeaa3a;
+  --color-warn-500: #e09a1c;
+  --color-warn-200: #5e4a1f;
+  --color-warn-100: #3d3014;
+  --color-warn-50: #2c2310;
+
+  --color-bad-700: #f79aa0;
+  --color-bad-600: #d63a45;
+  --color-bad-500: #ef5f69;
+  --color-bad-200: #6b2b31;
+  --color-bad-100: #45191e;
+  --color-bad-50: #2f1719;
+
+  /* The same three hues, stepped for the dark card and validated as a set:
+     worst colour-blind delta-E 8.4, normal vision 23.1, all >= 3:1. */
+  --color-series-1: #607af1;
+  --color-series-2: #0da081;
+  --color-series-3: #e3645e;
+
+  /* A hairline of light rides on every card: on a navy ground a shadow alone
+     barely separates two planes. */
+  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.035), 0 1px 2px rgb(0 0 0 / 0.45), 0 2px 12px rgb(0 0 0 / 0.22);
+  --shadow-raise: 0 2px 6px rgb(0 0 0 / 0.45), 0 16px 32px -12px rgb(0 0 0 / 0.7);
+  --shadow-pop: 0 4px 12px rgb(0 0 0 / 0.5), 0 22px 44px -14px rgb(0 0 0 / 0.75);
+  --shadow-sticky: 0 1px 0 rgb(0 0 0 / 0.5), 0 8px 20px -14px rgb(0 0 0 / 0.8);
+  --shadow-tile: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px -2px rgb(0 0 0 / 0.3);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* One visible focus treatment everywhere, never removed. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Tabular figures so columns of numbers and dates line up. Large standalone
+     figures keep proportional ones - a lone KPI is read, not compared down a
+     column. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: var(--color-brand-100);
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary {
+    cursor: pointer;
+  }
+}
+
+/*
+ * Motion.
+ *
+ * Every animation here moves only `transform` and `opacity`, the two
+ * properties a browser can animate on the compositor without re-running
+ * layout or paint, so none of it competes with a click for the main thread.
+ * None of it gates input either: an element is clickable from its first frame.
+ * Keyframes with only a `from` animate to the element's own resting style, so
+ * switching animation off (reduced motion) leaves everything in its final
+ * state, never stuck invisible.
+ */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+@keyframes pop-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+@keyframes nav-progress {
+  from {
+    transform: scaleX(0.08);
+  }
+  to {
+    transform: scaleX(0.9);
+  }
+}
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+/* For SVG paths given pathLength="1": the line draws itself once, then the
+   dash pattern stays on as a single full-length dash. */
+@keyframes draw {
+  from {
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 0;
+  }
+}
+/* For ring arcs: grows from nothing to the dash the element already has. */
+@keyframes arc {
+  from {
+    stroke-dasharray: 0 var(--arc-c, 1000);
+  }
+}
+@keyframes float {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+/* A refused sign-in: the message nudges sideways once. */
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+/* A notification arriving: the bell swings once. */
+@keyframes bell {
+  20% {
+    transform: rotate(14deg);
+  }
+  40% {
+    transform: rotate(-11deg);
+  }
+  60% {
+    transform: rotate(7deg);
+  }
+  80% {
+    transform: rotate(-4deg);
+  }
+}
+@keyframes topbar-solid {
+  to {
+    background-color: color-mix(in oklab, var(--color-canvas) 82%, transparent);
+    box-shadow: var(--shadow-sticky);
+  }
+}
+
+@layer components {
+  /* Horizontal scroll is contained to the table, never the page body. */
+  .scroll-x {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  /* The rail's own scrollbar, so a long nav does not paint a light gutter
+     down the middle of a dark plane. */
+  .rail-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rail-700) transparent;
+  }
+  .rail-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .rail-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-rail-700);
+    border-radius: 3px;
+  }
+
+  /* A page arriving: its top-level blocks settle into place. Runs when the
+     blocks are inserted, so a refresh after saving (same elements, new data)
+     never replays it. Short and barely staggered, because content that is
+     still fading in reads as content that has not arrived: the whole page is
+     legible within 0.2s, and at full strength by 0.24s. Fills backwards
+     only: a transform animation still in effect after it ends makes the
+     block the containing block for position: fixed, which would pin side
+     panels opened inside the page to the page instead of the window. */
+  .page-enter > * {
+    animation: rise 0.2s var(--ease-smooth) backwards;
+  }
+  .page-enter > :nth-child(2) {
+    animation-delay: 0.015s;
+  }
+  .page-enter > :nth-child(n + 3) {
+    animation-delay: 0.03s;
+  }
+
+  /* A clickable card: lifts 2px and its shadow deepens. The deeper shadow is
+     a pre-rendered layer that fades in, rather than an animated box-shadow,
+     which would repaint on every frame. */
+  .lift {
+    position: relative;
+    transition: transform 0.22s var(--ease-smooth);
+  }
+  .lift::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: var(--shadow-raise);
+    opacity: 0;
+    transition: opacity 0.22s var(--ease-smooth);
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    .lift:hover {
+      transform: translateY(-2px);
+    }
+    .lift:hover::after {
+      opacity: 1;
+    }
+  }
+  .lift:active {
+    transform: translateY(0) scale(0.99);
+    transition-duration: 0.08s;
+  }
+
+  /* Anything pressable gives way under the pointer at once. */
+  .press {
+    transition:
+      transform 0.14s var(--ease-smooth),
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease,
+      filter 0.15s ease,
+      opacity 0.15s ease;
+  }
+  .press:active:not(:disabled):not([aria-disabled='true']) {
+    transform: scale(0.96);
+    transition-duration: 0.06s;
+  }
+
+  /* A page on its way (components/navigation-progress.tsx). The current page
+     stays until the next is ready, so this is the only sign of a slow one: a
+     hairline that eases most of the way across and fades when the page lands.
+     Placeholder screens were removed on purpose - React keeps a fallback on
+     screen for at least 300ms once shown, which made every click that slow. */
+  .nav-progress {
+    position: fixed;
+    inset-inline: 0;
+    top: 0;
+    z-index: 60;
+    height: 2px;
+    pointer-events: none;
+    background: var(--color-brand-500);
+    transform-origin: left;
+    transform: scaleX(0);
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+  }
+  .nav-progress-on {
+    opacity: 1;
+    animation: nav-progress 4s cubic-bezier(0.1, 0.6, 0.2, 1) both;
+  }
+
+  /* Menus and panels. They open from where they are anchored and close
+     faster than they open; `data-state="closed"` plays the exit before the
+     panel unmounts. */
+  .popover {
+    transform-origin: var(--origin, top right);
+    animation: pop-in 0.16s var(--ease-smooth) both;
+  }
+  .popover-up {
+    transform-origin: var(--origin, bottom right);
+    animation: pop-up 0.18s var(--ease-smooth) both;
+  }
+  .popover[data-state='closed'],
+  .popover-up[data-state='closed'] {
+    animation: pop-out 0.11s ease-in both;
+    pointer-events: none;
+  }
+
+  /* Charts draw themselves once, on arrival. */
+  .chart-draw {
+    animation: draw 1s var(--ease-smooth) both;
+  }
+  .chart-fade {
+    animation: fade-in 0.7s ease-out 0.3s both;
+  }
+  .chart-grow-y {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: grow-y 0.7s var(--ease-smooth) both;
+  }
+  .chart-grow-x {
+    transform-origin: 0 50%;
+    animation: grow-x 0.7s var(--ease-smooth) both;
+  }
+  .chart-arc {
+    animation: arc 1.1s var(--ease-smooth) both;
+  }
+  .chart-tip {
+    animation: fade-in 0.12s ease-out both;
+  }
+
+  /* The top bar: transparent over the canvas at rest, frosted with a hairline
+     once content scrolls under it. Driven by the scroll position itself where
+     the browser supports scroll-linked animation - no scroll listener, no
+     JavaScript - and simply frosted everywhere else. */
+  .topbar {
+    background-color: color-mix(in oklab, var(--color-canvas) 82%, transparent);
+    box-shadow: var(--shadow-sticky);
+    backdrop-filter: saturate(1.4) blur(12px);
+    -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  }
+  /* At rest it is transparent; a page too short to scroll keeps it that way. */
+  @supports (animation-timeline: scroll()) {
+    .topbar {
+      background-color: transparent;
+      box-shadow: none;
+      animation: topbar-solid linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 48px;
+    }
+  }
+
+  .float {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+
+/* Theme switches cross-fade instead of snapping (where supported). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.28s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Scroll-linked, not motion: it follows the reader's own scrolling. */
+  .topbar {
+    animation-duration: auto !important;
+  }
+}
+
+@media print {
+  .page-enter > * {
+    animation: none;
+  }
+}
+
+/* A full-screen conversation on a phone fills the space between the top bar
+   and the tab bar, so the page footer would sit on top of its composer. */
+@media (width < 64rem) {
+  body:has([data-fullscreen-chat]) [data-shell-footer] {
+    display: none;
+  }
+}

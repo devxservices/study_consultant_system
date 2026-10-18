@@ -1,0 +1,35 @@
+
+> @crm/web@0.1.0 bench
+> node bench/pages.bench.mjs
+
+
+15 renders of each page
+
+page                       status  median ms   p95 ms  API calls  queries    bytes
+manager: overview             200      133.3    224.4         14       31   150861
+manager: clients              200      152.7    235.7          8       16   313451
+manager: one client           200      123.4    187.6         11       25   115756
+manager: one case             200      141.5    164.0         12       31   125091
+manager: not moving           200      111.6    135.7          8       15    65368
+manager: tasks                200       93.4    110.3          8       15    95730
+manager: finance              200      143.5    189.3         10       21   164774
+manager: team                 200      107.7    142.0          8       15    89575
+manager: audit trail          200      125.7    152.1          8       15   129018
+manager: security             200      103.2    123.3         10       20   109252
+consultant: dashboard         200      142.7    172.0         18       42   150301
+consultant: clients           200      110.3    137.6          8       15   184246
+consultant: one client        200      109.9    154.5         11     24.1   112671
+consultant: one case          200      116.5    174.4         12       30   121388
+consultant: to review         200       89.2    107.6          8       15    62408
+consultant: messages          200       86.6    126.0          8       14    60292
+consultant: tasks             200       89.6     93.2          8       14    76586
+consultant: workload          200       72.2    105.3          7       11    61114
+client: overview              200       98.1    118.9          9       19    70562
+client: progress              200       99.0    112.2          7       14    57931
+client: documents             200      108.3    125.6          8       19    55164
+client: payments              200       89.1    113.2          8       15    60175
+client: messages              200       92.0    119.6          8       17    45533
+sign-in page                  200       10.0     17.3          2        0    16678
+
+sum of medians 2549.5 ms; per pass: 219 API calls, 453.1 queries
+browser bundle: 1325 KB script, 54 KB styles, 92 files

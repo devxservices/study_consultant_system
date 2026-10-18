@@ -1,0 +1,37 @@
+{
+  "name": "consultant-crm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Study visa consultancy CRM - client, consultant and manager portals",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:shared": "npm run build --workspace @crm/shared",
+    "dev:api": "npm run start:dev --workspace @crm/api",
+    "dev:web": "npm run dev --workspace @crm/web",
+    "dev": "npm run build:shared && concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "start:web": "npm run start --workspace @crm/web",
+    "fast": "npm run build:shared && npm run build --workspace @crm/web && concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:start:web\"",
+    "db:push": "npm run db:push --workspace @crm/api",
+    "db:seed": "npm run db:seed --workspace @crm/api",
+    "db:seed:extras": "npm run db:seed:extras --workspace @crm/api",
+    "db:reset": "npm run db:reset --workspace @crm/api",
+    "admin:create": "npm run admin:create --workspace @crm/api --",
+    "build": "npm run build:shared && npm run build --workspace @crm/api && npm run build --workspace @crm/web",
+    "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.30"
+    }
+  }
+}

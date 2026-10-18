@@ -1,0 +1,17 @@
+# Everything the image builds for itself, and everything private to this machine.
+**/node_modules
+**/.next
+**/dist
+**/.test-build
+**/*.tsbuildinfo
+.git
+.data
+.bench
+storage
+deploy/backups
+deploy/.env
+deploy/.env.new
+.env
+.env.*
+!.env.example
+*.log
