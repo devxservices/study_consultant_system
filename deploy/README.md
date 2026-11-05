@@ -264,27 +264,32 @@ apps. The platform domain is written into the two `rule=` labels on the
    certificates):
    `A  yourcrm.com -> server IP` and `A  *.yourcrm.com -> server IP`.
 2. **Coolify's proxy stays on** (Traefik v3, as Coolify 4 installs it).
-3. **New resource** > your Git repository > Build Pack **Docker Compose**
+3. **Database**: New Resource > Database > PostgreSQL (18), user and database
+   `crm`, not publicly available. Start it and copy its "Postgres URL
+   (internal)" - that is `DATABASE_URL`. A database of its own keeps its data
+   whatever happens to the app, and Coolify backs it up (its Backups page, to
+   R2 or any S3 storage).
+4. **New resource** > your Git repository > Build Pack **Docker Compose**
    ("Compose"), Base Directory `/`, Docker Compose Location
    `/docker-compose.coolify.yml`. Leave the domain of every service empty.
-4. **Environment Variables** > Developer view: paste the `KEY=VALUE` lines
+5. **Environment Variables** > Developer view: paste the `KEY=VALUE` lines
    (no comments). Untick "Build Variable" on the secrets. Required:
    `PLATFORM_DOMAIN`, `WEB_ORIGIN`, `PUBLIC_IP`, `ACME_EMAIL`,
-   `POSTGRES_PASSWORD`, `JWT_SECRET`, `MFA_ENCRYPTION_KEY`, and either the
+   `DATABASE_URL`, `JWT_SECRET`, `MFA_ENCRYPTION_KEY`, and either the
    `S3_*` lines with `STORAGE_DRIVER=s3` or `STORAGE_ENCRYPTION_KEY`.
-5. **Deploy**. Then, in the `api` container's Terminal, create your admin:
+6. **Deploy**. Then, in the `api` container's Terminal, create your admin:
    `node dist/db/scripts/create-admin.js --email you@yourcrm.com --name "Your name"`
    (it prints the password) and sign in at `https://admin.yourcrm.com`.
-6. **A consultancy's own domain** (portal.theirsite.com): the platform's
+7. **A consultancy's own domain** (portal.theirsite.com): the platform's
    addresses need nothing, but Traefik cannot tell a consultancy's domain from
    your other apps' domains. Once, add `deploy/traefik-custom-domains.yml` under
    Servers > your server > Proxy > Dynamic Configurations; then add each
    connected domain to both of its rules and save. Traefik reloads it by
    itself - no redeploy, no restart.
 
-`deploy/backup.sh` assumes the plain Docker setup and does not run here: set
-up database backups separately (a scheduled `pg_dump` of the `db` service,
-copied off the server) and, with R2, a bucket backup as in section 8.
+`deploy/backup.sh` assumes the plain Docker setup and does not run here: back
+the database up from its Backups page in Coolify (daily, to R2 or any S3
+storage, kept off the server) and, with R2, the file bucket as in section 8.
 
 ## Appendix: doing it by hand
 

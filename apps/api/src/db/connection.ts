@@ -29,6 +29,12 @@ export const DEFAULT_PGLITE_DIR = path.resolve(process.cwd(), '../../.data/pg');
 export function resolveDbTarget(): { driver: DbDriver; target: string } {
   const url = process.env.DATABASE_URL?.trim();
   if (url) return { driver: 'postgres', target: url };
+  // The embedded database is for a laptop. In a container it would live in
+  // the container's own layer and vanish on the next deploy, so production
+  // refuses to start without a real one rather than lose data quietly.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('DATABASE_URL must be set in production (postgres://user:password@host:5432/db).');
+  }
   return { driver: 'pglite', target: process.env.PGLITE_DIR?.trim() || DEFAULT_PGLITE_DIR };
 }
 

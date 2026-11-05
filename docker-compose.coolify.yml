@@ -1,6 +1,7 @@
-# The whole platform for Coolify: PostgreSQL, the API, the web app, and Caddy
-# in front for HTTPS on every address - the platform's own and each
-# consultancy's custom domain (certificates issued on demand).
+# The platform for Coolify: the API, the web app, and Caddy in front for
+# HTTPS on every address - the platform's own and each consultancy's custom
+# domain (certificates issued on demand). PostgreSQL is a separate Coolify
+# database resource, reached through DATABASE_URL.
 #
 # Coolify setup (deploy/README.md, "Coolify", has the full steps):
 #   - Coolify's proxy stays on: other apps on the server keep working, and it
@@ -16,20 +17,9 @@
 # behind Coolify's proxy instead of holding ports 80/443 itself.
 
 services:
-  db:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: crm
-      POSTGRES_USER: crm
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U crm -d crm"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+  # The database is not in this file: it is a PostgreSQL resource of its own
+  # in Coolify (New Resource > Database), so it keeps its data and backups
+  # whatever happens to this app, and DATABASE_URL is its internal URL.
 
   api:
     build:
@@ -41,7 +31,8 @@ services:
       NODE_ENV: production
       TZ: ${TZ:-Asia/Karachi}
       PORT: 4000
-      DATABASE_URL: postgresql://crm:${POSTGRES_PASSWORD:?}@db:5432/crm
+      # Coolify's database page, "Postgres URL (internal)".
+      DATABASE_URL: ${DATABASE_URL:?}
       # Caddy puts the visitor's real address in X-Real-IP (and overwrites
       # anything a browser sent under that name).
       CLIENT_IP_HEADER: x-real-ip
@@ -85,9 +76,11 @@ services:
       TWILIO_WHATSAPP_FROM: ${TWILIO_WHATSAPP_FROM:-}
     volumes:
       - files:/app/storage
-    depends_on:
-      db:
-        condition: service_healthy
+    # The coolify network is where Coolify's databases live, so the host in
+    # DATABASE_URL resolves from here.
+    networks:
+      - default
+      - coolify
 
   web:
     build:
@@ -151,7 +144,6 @@ networks:
     external: true
 
 volumes:
-  pgdata:
   files:
   caddy_data:
   caddy_config:
