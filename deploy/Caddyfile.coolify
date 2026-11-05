@@ -1,0 +1,64 @@
+# The Caddyfile for a server shared with other apps under Coolify.
+#
+# Coolify's own proxy (Traefik) keeps ports 80 and 443. It hands this Caddy
+# only the platform's addresses (labels in docker-compose.coolify.yml) and
+# each consultancy domain listed in Coolify's proxy settings
+# (deploy/traefik-custom-domains.yml) - HTTPS still encrypted, so Caddy issues
+# and serves the certificates exactly as on a server of its own. Everything
+# else on the server stays with Traefik.
+#
+# Differences from deploy/Caddyfile: the PROXY protocol header Traefik adds
+# carries the visitor's real address, and HTTP/3 is off (Traefik does not
+# pass UDP through, so advertising it would send browsers to a dead end).
+{
+	email {$ACME_EMAIL}
+	on_demand_tls {
+		ask http://api:4000/api/tenancy/tls-check
+	}
+	servers :443 {
+		listener_wrappers {
+			proxy_protocol {
+				allow 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+			}
+			tls
+		}
+		protocols h1 h2
+	}
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	encode zstd gzip
+
+	# Nothing here belongs in search results: not the pages, and not the
+	# documents and PDFs the API serves. Deferred, so it replaces whatever the
+	# upstream sent rather than adding a second copy.
+	header {
+		X-Robots-Tag "noindex, nofollow"
+		defer
+	}
+
+	# The API directly: data requests and the realtime sockets. The host the
+	# visitor used decides which consultancy's sign-in this is, so it is set
+	# here and replaces anything the browser sent under the same name.
+	handle /api/* {
+		reverse_proxy api:4000 {
+			header_up X-Tenant-Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Everything else is a page.
+	handle {
+		reverse_proxy web:3000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}
+
+# Plain http always moves to https (certificate challenges are answered first).
+http:// {
+	redir https://{host}{uri} permanent
+}

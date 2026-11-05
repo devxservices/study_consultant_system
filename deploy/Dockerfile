@@ -7,6 +7,10 @@
 FROM caddy:2 AS caddy
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 
+# The same behind Coolify's proxy on a server shared with other apps.
+FROM caddy:2 AS caddy-coolify
+COPY deploy/Caddyfile.coolify /etc/caddy/Caddyfile
+
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1

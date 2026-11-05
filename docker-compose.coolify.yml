@@ -3,8 +3,8 @@
 # consultancy's custom domain (certificates issued on demand).
 #
 # Coolify setup (deploy/README.md, "Coolify", has the full steps):
-#   - the server runs only this platform, with Coolify's own proxy set to None:
-#     Caddy here needs ports 80 and 443 to issue certificates;
+#   - Coolify's proxy stays on: other apps on the server keep working, and it
+#     passes this platform's addresses through to Caddy (labels on `caddy`);
 #   - Build Pack "Docker Compose", Base Directory "/", Docker Compose Location
 #     "/docker-compose.coolify.yml";
 #   - leave every service's domain empty in Coolify: Caddy serves them all;
@@ -12,7 +12,8 @@
 #
 # The difference from deploy/docker-compose.yml: every setting is passed by
 # name (Coolify only hands a container the variables its compose file names),
-# and the Caddyfile is built into the image rather than mounted.
+# the Caddyfile is built into the image rather than mounted, and Caddy sits
+# behind Coolify's proxy instead of holding ports 80/443 itself.
 
 services:
   db:
@@ -103,24 +104,51 @@ services:
     depends_on:
       - api
 
+  # Behind Coolify's proxy, which keeps ports 80/443 for every app on the
+  # server. The labels hand this Caddy the platform's own addresses - still
+  # encrypted (TLS passthrough), so Caddy issues each certificate itself -
+  # and nothing else. Consultancies' own domains are added in Coolify's proxy
+  # settings: deploy/traefik-custom-domains.yml.
+  #
+  # The platform domain is written into the two rules below (dots escaped).
+  # Using another domain? Change both.
   caddy:
     build:
       context: .
       dockerfile: deploy/Dockerfile
-      target: caddy
+      target: caddy-coolify
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
     environment:
       ACME_EMAIL: ${ACME_EMAIL:?}
     volumes:
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      - default
+      - coolify
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      # https: the platform's addresses, passed through still encrypted, with
+      # the visitor's address in a PROXY protocol header.
+      - 'traefik.tcp.routers.studycrm-tls.rule=HostSNIRegexp(`^(.+\.)?studyconsultantcrm\.devx\.services`)'
+      - traefik.tcp.routers.studycrm-tls.entrypoints=https
+      - traefik.tcp.routers.studycrm-tls.tls.passthrough=true
+      - traefik.tcp.routers.studycrm-tls.service=studycrm-tls
+      - traefik.tcp.services.studycrm-tls.loadbalancer.server.port=443
+      - traefik.tcp.services.studycrm-tls.loadbalancer.proxyprotocol.version=2
+      # http: certificate challenges and the redirect to https.
+      - 'traefik.http.routers.studycrm-http.rule=HostRegexp(`^(.+\.)?studyconsultantcrm\.devx\.services`)'
+      - traefik.http.routers.studycrm-http.entrypoints=http
+      - traefik.http.routers.studycrm-http.service=studycrm-http
+      - traefik.http.services.studycrm-http.loadbalancer.server.port=80
     depends_on:
       - web
       - api
+
+networks:
+  coolify:
+    external: true
 
 volumes:
   pgdata:

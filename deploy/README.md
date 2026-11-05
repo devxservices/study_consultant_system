@@ -252,19 +252,21 @@ copies behind the same Caddy, with the database on a managed PostgreSQL.
 ## Coolify
 
 `docker-compose.coolify.yml` (repository root) runs the same four services
-under Coolify. The platform's own Caddy still issues every certificate,
-including consultancies' own domains, so it needs ports 80 and 443: give the
-platform a server of its own.
+under Coolify, on a server it can share with other apps. Coolify's proxy
+(Traefik) keeps ports 80 and 443 and passes the platform's addresses through
+to the platform's own Caddy still encrypted, so Caddy issues every
+certificate itself; every other address stays with Traefik and the other
+apps. The platform domain is written into the two `rule=` labels on the
+`caddy` service: change them if yours is different.
 
 1. **DNS**, at whoever serves your domain (records "DNS only" - grey cloud -
    in Cloudflare; a proxied record breaks consultancies' CNAMEs and the
    certificates):
    `A  yourcrm.com -> server IP` and `A  *.yourcrm.com -> server IP`.
-2. **Proxy off**: Servers > your server > Proxy > stop it and switch it to
-   None. Coolify's dashboard stays at `http://<server-ip>:8000`.
-3. **New resource** > your Git repository > Build Pack **Docker Compose**,
-   Base Directory `/`, Docker Compose Location `/docker-compose.coolify.yml`.
-   Leave the domain of every service empty.
+2. **Coolify's proxy stays on** (Traefik v3, as Coolify 4 installs it).
+3. **New resource** > your Git repository > Build Pack **Docker Compose**
+   ("Compose"), Base Directory `/`, Docker Compose Location
+   `/docker-compose.coolify.yml`. Leave the domain of every service empty.
 4. **Environment Variables** > Developer view: paste the `KEY=VALUE` lines
    (no comments). Untick "Build Variable" on the secrets. Required:
    `PLATFORM_DOMAIN`, `WEB_ORIGIN`, `PUBLIC_IP`, `ACME_EMAIL`,
@@ -273,6 +275,12 @@ platform a server of its own.
 5. **Deploy**. Then, in the `api` container's Terminal, create your admin:
    `node dist/db/scripts/create-admin.js --email you@yourcrm.com --name "Your name"`
    (it prints the password) and sign in at `https://admin.yourcrm.com`.
+6. **A consultancy's own domain** (portal.theirsite.com): the platform's
+   addresses need nothing, but Traefik cannot tell a consultancy's domain from
+   your other apps' domains. Once, add `deploy/traefik-custom-domains.yml` under
+   Servers > your server > Proxy > Dynamic Configurations; then add each
+   connected domain to both of its rules and save. Traefik reloads it by
+   itself - no redeploy, no restart.
 
 `deploy/backup.sh` assumes the plain Docker setup and does not run here: set
 up database backups separately (a scheduled `pg_dump` of the `db` service,

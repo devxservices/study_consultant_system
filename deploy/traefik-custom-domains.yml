@@ -1,0 +1,36 @@
+# Consultancies' own domains (portal.theirconsultancy.com), for a server
+# shared with other apps under Coolify (docker-compose.coolify.yml).
+#
+# The platform's own addresses (*.studyconsultantcrm.devx.services) need
+# nothing here - they reach the CRM by themselves. Only a consultancy's own
+# domain has to be named, because Coolify's proxy cannot tell it apart from
+# your other apps' domains on its own.
+#
+# Once, in Coolify: Servers > your server > Proxy > Dynamic Configurations >
+# Add, name it studycrm-custom-domains.yaml and paste this file.
+#
+# Each time a consultancy connects its own domain in the CRM, add the domain
+# to BOTH rules below, joined with  ||  , and save. The proxy reloads it by
+# itself: no redeploy, no restart, and no other app is affected. Caddy then
+# issues the certificate on the first visit.
+#
+#   rule: "HostSNI(`portal.first.com`) || HostSNI(`crm.second.com`)"
+#   rule: "Host(`portal.first.com`) || Host(`crm.second.com`)"
+
+tcp:
+  routers:
+    studycrm-custom-domains:
+      entryPoints:
+        - https
+      rule: "HostSNI(`portal.example-consultancy.com`)"
+      service: studycrm-tls@docker
+      tls:
+        passthrough: true
+
+http:
+  routers:
+    studycrm-custom-domains:
+      entryPoints:
+        - http
+      rule: "Host(`portal.example-consultancy.com`)"
+      service: studycrm-http@docker
