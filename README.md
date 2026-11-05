@@ -1139,8 +1139,9 @@ listed under "needs".
 
 - **A ceiling per account** (`RATE_LIMIT_PER_MINUTE`, `RATE_LIMIT_BURST`,
   `apps/api/src/common/rate-limit.ts`): token buckets keyed by the signed-in
-  person, checked after authentication - 600 a minute after a burst of 120 by
-  default, far above any person's pace. A refused request gets `429` with
+  person, checked after authentication - 3000 a minute after a burst of 600 by
+  default (one page render is 10-12 API calls, and hovering the menu
+  prefetches whole pages; 600/120 refused people browsing quickly). A refused request gets `429` with
   `Retry-After` and does not push the wait further out. Checked against the
   running server: 160 simultaneous requests from one account, 134 served and
   26 refused, while another account carried on. Per instance, so N instances

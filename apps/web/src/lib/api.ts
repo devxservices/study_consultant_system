@@ -44,19 +44,32 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   // of a page view names them rather than this server.
   const realIp = (await headers()).get('x-real-ip');
 
-  const res = await fetch(`${API_URL}/api${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(cookieHeader ? { cookie: cookieHeader } : {}),
-      ...(realIp ? { 'x-real-ip': realIp } : {}),
-      ...init.headers,
-      // Last, so nothing a caller passes can override which site this is.
-      'x-tenant-host': await requestHost(),
-    },
-    // Case data changes constantly; a stale dashboard is worse than a slow one.
-    cache: 'no-store',
-  });
+  const tenantHost = await requestHost();
+  const send = () =>
+    fetch(`${API_URL}/api${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
+        ...(realIp ? { 'x-real-ip': realIp } : {}),
+        ...init.headers,
+        // Last, so nothing a caller passes can override which site this is.
+        'x-tenant-host': tenantHost,
+      },
+      // Case data changes constantly; a stale dashboard is worse than a slow one.
+      cache: 'no-store',
+    });
+
+  let res = await send();
+  // Quick navigation can briefly outrun the per-account limit. A page read
+  // waits the moment the API asks for (Retry-After, at most 2s) and asks once
+  // more, rather than showing an error for a page that loads a second later.
+  // Reads only: a refused write is reported, never repeated behind the back.
+  if (res.status === 429 && (init.method ?? 'GET').toUpperCase() === 'GET') {
+    const wait = Math.min(2, Math.max(0.2, Number(res.headers.get('retry-after')) || 1));
+    await new Promise((resolve) => setTimeout(resolve, wait * 1000));
+    res = await send();
+  }
 
   if (res.status === 204) return undefined as T;
 

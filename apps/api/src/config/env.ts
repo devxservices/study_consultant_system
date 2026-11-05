@@ -117,12 +117,17 @@ const envSchema = z.object({
 
   /**
    * Per signed-in account: a burst of RATE_LIMIT_BURST requests, refilling at
-   * RATE_LIMIT_PER_MINUTE. 0 switches it off. Defaults to 600 a minute, and to
-   * off under NODE_ENV=test so the test and benchmark suites measure the app
-   * rather than the limiter.
+   * RATE_LIMIT_PER_MINUTE. 0 switches it off. Defaults to 3000 a minute after
+   * a burst of 600, and to off under NODE_ENV=test so the test and benchmark
+   * suites measure the app rather than the limiter.
+   *
+   * Sized for how the web app really calls: one page render is 10-12 API
+   * calls (layout, counters, the page's own data) and hovering the menu
+   * prefetches whole pages, so a person moving quickly spends a hundred calls
+   * in a few seconds. The earlier 600/120 turned that into error pages.
    */
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(0).optional(),
-  RATE_LIMIT_BURST: z.coerce.number().int().min(1).default(120),
+  RATE_LIMIT_BURST: z.coerce.number().int().min(1).default(600),
 
   /** Seed script only: password given to every demo account. */
   SEED_PASSWORD: z.string().default('password123'),
@@ -150,7 +155,7 @@ export function env(): Env {
   cached = {
     ...parsed.data,
     RATE_LIMIT_PER_MINUTE:
-      parsed.data.RATE_LIMIT_PER_MINUTE ?? (parsed.data.NODE_ENV === 'test' ? 0 : 600),
+      parsed.data.RATE_LIMIT_PER_MINUTE ?? (parsed.data.NODE_ENV === 'test' ? 0 : 3000),
   };
 
   if (cached.NODE_ENV === 'production' && !cached.MFA_ENCRYPTION_KEY) {
