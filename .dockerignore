@@ -9,9 +9,7 @@
 .bench
 storage
 deploy/backups
-deploy/.env
-deploy/.env.new
-.env
-.env.*
-!.env.example
+**/.env
+**/.env.*
+!**/.env.example
 *.log

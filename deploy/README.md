@@ -249,6 +249,35 @@ One server comfortably serves dozens of consultancies. For more, see "Running
 it for many people" in the main README: the API and web app can run as several
 copies behind the same Caddy, with the database on a managed PostgreSQL.
 
+## Coolify
+
+`docker-compose.coolify.yml` (repository root) runs the same four services
+under Coolify. The platform's own Caddy still issues every certificate,
+including consultancies' own domains, so it needs ports 80 and 443: give the
+platform a server of its own.
+
+1. **DNS**, at whoever serves your domain (records "DNS only" - grey cloud -
+   in Cloudflare; a proxied record breaks consultancies' CNAMEs and the
+   certificates):
+   `A  yourcrm.com -> server IP` and `A  *.yourcrm.com -> server IP`.
+2. **Proxy off**: Servers > your server > Proxy > stop it and switch it to
+   None. Coolify's dashboard stays at `http://<server-ip>:8000`.
+3. **New resource** > your Git repository > Build Pack **Docker Compose**,
+   Base Directory `/`, Docker Compose Location `/docker-compose.coolify.yml`.
+   Leave the domain of every service empty.
+4. **Environment Variables** > Developer view: paste the `KEY=VALUE` lines
+   (no comments). Untick "Build Variable" on the secrets. Required:
+   `PLATFORM_DOMAIN`, `WEB_ORIGIN`, `PUBLIC_IP`, `ACME_EMAIL`,
+   `POSTGRES_PASSWORD`, `JWT_SECRET`, `MFA_ENCRYPTION_KEY`, and either the
+   `S3_*` lines with `STORAGE_DRIVER=s3` or `STORAGE_ENCRYPTION_KEY`.
+5. **Deploy**. Then, in the `api` container's Terminal, create your admin:
+   `node dist/db/scripts/create-admin.js --email you@yourcrm.com --name "Your name"`
+   (it prints the password) and sign in at `https://admin.yourcrm.com`.
+
+`deploy/backup.sh` assumes the plain Docker setup and does not run here: set
+up database backups separately (a scheduled `pg_dump` of the `db` service,
+copied off the server) and, with R2, a bucket backup as in section 8.
+
 ## Appendix: doing it by hand
 
 What the installer does, step by step, for a server where you prefer to type

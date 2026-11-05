@@ -1,6 +1,11 @@
-# One image definition, two targets: the API and the web app.
+# One image definition, three targets: the API, the web app and the edge proxy.
 # Built from the repository root:  docker compose -f deploy/docker-compose.yml build
 # (docker-compose.yml already points here; you rarely run this by hand.)
+
+# Caddy with this repository's Caddyfile inside, for hosts that cannot mount a
+# file from the repository (Coolify). docker-compose.yml mounts it instead.
+FROM caddy:2 AS caddy
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /app

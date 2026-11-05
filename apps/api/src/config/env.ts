@@ -136,7 +136,13 @@ let cached: Env | null = null;
 
 export function env(): Env {
   if (cached) return cached;
-  const parsed = envSchema.safeParse(process.env);
+  // An empty value means "not set". Compose files and hosting panels (Coolify)
+  // pass `${VAR:-}` through as "", which would otherwise turn ADMIN_HOST into
+  // an empty host or RATE_LIMIT_PER_MINUTE into 0 instead of their defaults.
+  const given = Object.fromEntries(
+    Object.entries(process.env).filter(([, v]) => v !== undefined && v.trim() !== ''),
+  );
+  const parsed = envSchema.safeParse(given);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid environment configuration:\n${issues.join('\n')}`);
