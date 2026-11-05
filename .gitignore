@@ -7,7 +7,7 @@ out/
 
 # Local-first data: embedded Postgres + local object storage
 .data/
-storage/
+/storage/
 
 # Secrets: every env file except the documented examples (root and deploy/)
 .env

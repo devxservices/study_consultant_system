@@ -42,6 +42,7 @@ import { TenantsService } from './tenants.service';
 import { tenancyConfig } from './tenant-resolver.service';
 import { configuredAddresses } from './domain-dns';
 import { env } from '../config/env';
+import { isR2Endpoint } from '../storage/s3.driver';
 import { PlansService } from './plans.service';
 import { MfaService } from '../auth/mfa.service';
 import { PlatformSettingsService } from './platform-settings.service';
@@ -241,7 +242,7 @@ export class AdminPlatformController {
         { key: 'database', ok: Boolean(process.env.DATABASE_URL), label: 'Database', detail: process.env.DATABASE_URL ? 'PostgreSQL (DATABASE_URL)' : 'Embedded development database: one process, no backups. Set DATABASE_URL' },
         { key: 'email', ok: e.MAIL_DRIVER === 'smtp', label: 'Email', detail: e.MAIL_DRIVER === 'smtp' ? `Sent through ${e.SMTP_HOST ?? 'SMTP'} as ${e.MAIL_FROM}` : 'MAIL_DRIVER=log: password resets and invitations are NOT sent. Set up SMTP' },
         { key: 'ip', ok: ips.length > 0, label: 'Server address for root domains', detail: ips.length ? `A records point to ${ips.join(', ')}` : 'PUBLIC_IP is not set: consultancies using a root domain (example.com) are not told where to point it' },
-        { key: 'files', ok: e.STORAGE_DRIVER === 's3' || Boolean(e.STORAGE_ENCRYPTION_KEY), label: 'File storage', detail: e.STORAGE_DRIVER === 's3' ? `S3 bucket ${e.S3_BUCKET ?? ''}` : e.STORAGE_ENCRYPTION_KEY ? 'Server disk, encrypted' : 'Server disk, key derived from JWT_SECRET: set STORAGE_ENCRYPTION_KEY' },
+        { key: 'files', ok: e.STORAGE_DRIVER === 's3' || Boolean(e.STORAGE_ENCRYPTION_KEY), label: 'File storage', detail: e.STORAGE_DRIVER === 's3' ? `${isR2Endpoint(e.S3_ENDPOINT) ? 'Cloudflare R2' : 'S3'} bucket ${e.S3_BUCKET ?? ''}` : e.STORAGE_ENCRYPTION_KEY ? 'Server disk, encrypted' : 'Server disk, key derived from JWT_SECRET: set STORAGE_ENCRYPTION_KEY' },
         { key: 'scan', ok: e.VIRUS_SCAN === 'clamav', label: 'Virus scanning', detail: e.VIRUS_SCAN === 'clamav' ? `ClamAV at ${e.CLAMAV_HOST}:${e.CLAMAV_PORT}` : 'Off: uploads are checked by type only. Optional, recommended' },
         { key: 'legal', ok: Boolean(legal.terms && legal.privacy), label: 'Terms and privacy policy', detail: legal.terms && legal.privacy ? 'Published, linked from every sign-in page and public form' : 'Not published: write them under Settings before taking personal data from the public' },
         { key: 'billing', ok: Boolean(billing.paymentInstructions), label: 'How consultancies pay you', detail: billing.paymentInstructions ? `Shown to managers when payment is due; ${billing.graceDays} grace days, ${billing.trialDays ? `${billing.trialDays}-day trial` : 'no trial end'} for new consultancies` : 'No payment instructions: managers are reminded to renew but not told how. Add them under Settings' },

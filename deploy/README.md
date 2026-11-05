@@ -173,6 +173,15 @@ This keeps 14 days of database dumps and uploaded files in `deploy/backups`.
 Copy that folder off the server as well (for example with `rclone` to
 Backblaze B2 or S3).
 
+**Files in Cloudflare R2 (or S3/B2).** With `STORAGE_DRIVER=s3` the uploaded
+files are in the bucket, so the nightly backup holds only the database. R2
+keeps objects durably, but a deleted file is gone for good: back the bucket up
+too, for example a nightly `rclone sync r2:consultancy-documents
+b2:crm-files-backup`. Switching an install that already has files from `local`
+to R2 does not move them; the old documents stop opening until they are copied
+across (decrypted, since the local driver encrypts them with
+`STORAGE_ENCRYPTION_KEY`).
+
 **Restoring** (onto a fresh install with the same `.env`):
 
 ```bash

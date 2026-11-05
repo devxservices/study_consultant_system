@@ -31,6 +31,8 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: name, template: `%s - ${name}` },
     description: 'Study visa applications, documents and case progress in one place.',
     ...(logo ? { icons: { icon: logo } } : {}),
+    // A private CRM: no page of it belongs in search results.
+    robots: { index: false, follow: false },
   };
 }
 

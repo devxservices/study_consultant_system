@@ -15,10 +15,17 @@ mkdir -p "$DEST"
 # The database, in PostgreSQL's own compressed format.
 docker compose exec -T db pg_dump -U crm -Fc crm > "$DEST/db_$STAMP.dump"
 
-# Uploaded files (already encrypted on disk), from the "files" volume.
-docker compose run --rm -T --no-deps --user root \
-  -v "$(cd "$DEST" && pwd):/backup" --entrypoint tar api \
-  czf "/backup/files_$STAMP.tgz" -C /app storage
+# Uploaded files (already encrypted on disk), from the "files" volume. With
+# STORAGE_DRIVER=s3 (R2, S3, B2) they live in the bucket, not on this disk,
+# so there is nothing here to copy: back the bucket up separately.
+DRIVER=$(sed -n 's/^STORAGE_DRIVER=//p' .env 2>/dev/null | tail -1 | tr -d '\r" ')
+if [ "$DRIVER" = "s3" ]; then
+  echo "files are in the S3/R2 bucket: not included in this backup"
+else
+  docker compose run --rm -T --no-deps --user root \
+    -v "$(cd "$DEST" && pwd):/backup" --entrypoint tar api \
+    czf "/backup/files_$STAMP.tgz" -C /app storage
+fi
 
 find "$DEST" -name 'db_*.dump' -mtime +"$KEEP_DAYS" -delete
 find "$DEST" -name 'files_*.tgz' -mtime +"$KEEP_DAYS" -delete

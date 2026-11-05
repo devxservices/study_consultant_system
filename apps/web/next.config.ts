@@ -25,7 +25,8 @@ const SHARED_SRC = path.resolve(__dirname, '../../packages/shared/src/index.ts')
  *  - object-src/base-uri close plugin and <base>-injection vectors;
  *  - MIME sniffing is off, referrers never leak a full URL cross-site, and the
  *    only powerful feature the app uses (the camera, for document capture) is
- *    allowed to self while microphone/geolocation are denied outright.
+ *    allowed to self while microphone/geolocation are denied outright;
+ *  - search engines are told to keep every response out of their index.
  * The CSP intentionally does not restrict script/connect, so the realtime chat
  * socket keeps working regardless of which host the API is on.
  */
@@ -39,6 +40,7 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+  { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
 ];
 
 const nextConfig: NextConfig = {

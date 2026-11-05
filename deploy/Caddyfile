@@ -19,6 +19,14 @@ https:// {
 	}
 	encode zstd gzip
 
+	# Nothing here belongs in search results: not the pages, and not the
+	# documents and PDFs the API serves. Deferred, so it replaces whatever the
+	# upstream sent rather than adding a second copy.
+	header {
+		X-Robots-Tag "noindex, nofollow"
+		defer
+	}
+
 	# The API directly: data requests and the realtime sockets. The host the
 	# visitor used decides which consultancy's sign-in this is, so it is set
 	# here and replaces anything the browser sent under the same name.
