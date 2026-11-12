@@ -30,7 +30,7 @@ import {
   type PartnerTier,
   type PartnerView,
 } from '@crm/shared';
-import { Button, cx } from '../ui';
+import { Button, TAB_BAR, cx, tabClass } from '../ui';
 import { Field, FormAlert, SelectInput, TextArea, TextInput } from '../forms';
 import { ConditionsEditor } from '../workflows/editors';
 import { usePost } from '../use-post';
@@ -916,9 +916,9 @@ export function MessageComposer({ url, students }: { url: string; students?: Opt
 
 export function SwitchTabs({ tabs, active }: { tabs: { key: string; label: string; href: string; badge?: number }[]; active: string }) {
   return (
-    <nav className="-mb-px mb-5 flex gap-1 overflow-x-auto border-b border-line">
+    <nav className={cx(TAB_BAR, 'mb-5 pb-1')}>
       {tabs.map((t) => (
-        <Link key={t.key} href={t.href} aria-current={active === t.key ? 'page' : undefined} className={cx('flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 pb-2.5 pt-1 text-[13.5px] font-medium', active === t.key ? 'border-brand-600 text-ink-950' : 'border-transparent text-ink-500 hover:text-ink-800')}>
+        <Link key={t.key} href={t.href} aria-current={active === t.key ? 'page' : undefined} className={tabClass(active === t.key)}>
           {t.label}
           {t.badge ? <span className="tnum rounded-full bg-warn-100 px-1.5 text-[11px] font-semibold text-warn-700">{t.badge}</span> : null}
         </Link>

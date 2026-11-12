@@ -9,9 +9,12 @@ import {
   Patch,
   Post,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { LOGO_UPLOAD_LIMITS } from './logo-image';
+import { LogoWriteThrottleGuard } from './logo-throttle.guard';
 import {
   addDomainSchema,
   updateTenantSchema,
@@ -51,7 +54,8 @@ export class BrandingController {
   }
 
   @Post('logo')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 1024 * 1024, files: 1 } }))
+  @UseGuards(LogoWriteThrottleGuard)
+  @UseInterceptors(FileInterceptor('file', { limits: LOGO_UPLOAD_LIMITS }))
   async setLogo(
     @CurrentUser() actor: AuthUser,
     @UploadedFile() file: { buffer: Buffer; size: number } | undefined,
@@ -66,9 +70,35 @@ export class BrandingController {
     return this.tenants.branding(tenantOf(actor));
   }
 
+  @UseGuards(LogoWriteThrottleGuard)
   @Delete('logo')
   async removeLogo(@CurrentUser() actor: AuthUser): Promise<BrandingSettings> {
     await this.tenants.removeLogo(actor, tenantOf(actor));
+    return this.tenants.branding(tenantOf(actor));
+  }
+
+  /** The wide logo, mark and name together, for the expanded menu and the sign-in page. */
+  @Post('logo/full')
+  @UseGuards(LogoWriteThrottleGuard)
+  @UseInterceptors(FileInterceptor('file', { limits: LOGO_UPLOAD_LIMITS }))
+  async setFullLogo(
+    @CurrentUser() actor: AuthUser,
+    @UploadedFile() file: { buffer: Buffer; size: number } | undefined,
+  ): Promise<BrandingSettings> {
+    if (!file) {
+      throw new BadRequestException({
+        message: 'No file was received.',
+        fieldErrors: { file: 'Choose an image to upload.' },
+      });
+    }
+    await this.tenants.setLogo(actor, tenantOf(actor), file, 'full');
+    return this.tenants.branding(tenantOf(actor));
+  }
+
+  @UseGuards(LogoWriteThrottleGuard)
+  @Delete('logo/full')
+  async removeFullLogo(@CurrentUser() actor: AuthUser): Promise<BrandingSettings> {
+    await this.tenants.removeLogo(actor, tenantOf(actor), 'full');
     return this.tenants.branding(tenantOf(actor));
   }
 

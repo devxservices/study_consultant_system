@@ -16,6 +16,9 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md';
 
 /*
+ * Buttons are the reference's pills: fully rounded, the primary one filled
+ * with the brand and glowing faintly in its own colour.
+ *
  * `press` gives every button the same immediate response: it gives way under
  * the pointer on the first frame of the click, before any request leaves.
  * Hover darkens by filter rather than by swapping to a darker step, because a
@@ -23,23 +26,23 @@ type ButtonSize = 'sm' | 'md';
  * white label on it would vanish.
  */
 const BUTTON_BASE =
-  'press inline-flex select-none items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap ' +
+  'press inline-flex select-none items-center justify-center gap-2 rounded-full whitespace-nowrap ' +
   'disabled:opacity-50 disabled:pointer-events-none';
 
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand-600 text-white shadow-[0_1px_2px_rgb(15_27_53/0.14)] hover:brightness-[0.93] ' +
-    'hover:shadow-[0_8px_18px_-8px_var(--color-brand-600)]',
+    'bg-brand-600 font-semibold text-white shadow-[0_8px_18px_-10px_var(--color-brand-600)] hover:brightness-[0.95] ' +
+    'hover:shadow-[0_10px_22px_-10px_var(--color-brand-600)]',
   secondary:
-    'border border-line-strong bg-paper text-ink-800 shadow-tile hover:border-ink-300 hover:bg-ink-50 hover:text-ink-950',
-  ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-950',
-  danger: 'bg-bad-600 text-white hover:brightness-[0.93]',
+    'border border-line-strong bg-paper font-medium text-ink-800 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700',
+  ghost: 'font-medium text-ink-600 hover:bg-ink-100 hover:text-ink-950',
+  danger: 'bg-bad-600 font-semibold text-white hover:brightness-[0.93]',
 };
 
 const BUTTON_SIZE: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-[13px]',
+  sm: 'h-8 px-3.5 text-[13px]',
   // 38px tall: comfortable to tap on a phone without looking oversized on desktop.
-  md: 'h-9.5 px-4 text-[14px]',
+  md: 'h-9.5 px-5 text-[14px]',
 };
 
 export function buttonClass(variant: ButtonVariant = 'primary', size: ButtonSize = 'md'): string {
@@ -65,12 +68,33 @@ export function LinkButton({
 }
 
 /* ------------------------------------------------------------------ */
+/* Tabs                                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A row of section tabs - a workspace's areas, a list's views. The
+ * reference's pills: the current one filled with the brand, the rest
+ * outlined. The row scrolls sideways on a phone rather than wrapping.
+ */
+export const TAB_BAR = 'flex gap-2 overflow-x-auto';
+
+export function tabClass(active: boolean, size: 'sm' | 'md' = 'md'): string {
+  return cx(
+    'press inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border font-medium',
+    size === 'sm' ? 'h-8 px-3.5 text-[13px]' : 'h-9 px-4 text-[13.5px]',
+    active
+      ? 'border-brand-600 bg-brand-600 text-white shadow-[0_6px_14px_-8px_var(--color-brand-600)]'
+      : 'border-line-strong bg-paper text-ink-600 hover:border-brand-200 hover:text-brand-700',
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Tones                                                               */
 /* ------------------------------------------------------------------ */
 
 /**
  * `info` is the plain "this is a count / for your information" tone. It is a
- * fixed blue rather than the consultancy's brand colour on purpose: a
+ * fixed purple rather than the consultancy's brand colour on purpose: a
  * consultancy is free to pick green or red for its buttons, and an
  * informational tag must never be mistaken for a status. The brand colour
  * stays on what you can press.
@@ -165,7 +189,7 @@ export function Pill({
   );
 }
 
-/** An icon on a soft tile in a tone's tint - the badge of every stat and list row. */
+/** An icon on a soft disc in a tone's tint - the badge of every stat and list row. */
 export function IconTile({
   tone = 'info',
   size = 40,
@@ -179,7 +203,7 @@ export function IconTile({
 }) {
   return (
     <span
-      className={cx('flex shrink-0 items-center justify-center rounded-lg', TONE_ICON[tone], className)}
+      className={cx('flex shrink-0 items-center justify-center rounded-full', TONE_ICON[tone], className)}
       style={{ width: size, height: size }}
       aria-hidden
     >
@@ -268,7 +292,7 @@ export function PageHeader({
             </ol>
           </nav>
         )}
-        <h1 className="text-[22px] font-medium leading-tight tracking-[-0.01em] text-ink-950">{title}</h1>
+        <h1 className="text-[24px] font-bold leading-tight tracking-[-0.02em] text-ink-950">{title}</h1>
         {subtitle && <p className="mt-1 text-[13.5px] text-ink-500">{subtitle}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
@@ -307,24 +331,29 @@ export function Panel({
 }) {
   return (
     <section className={cx('min-w-0 rounded-xl bg-paper shadow-card', className)}>
-      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 pb-3.5 pt-4 sm:px-5">
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
         <div className="min-w-0">
-          <h2 className="text-[16px] font-medium leading-6 text-ink-950">{title}</h2>
+          <h2 className="text-[17px] font-semibold leading-6 tracking-[-0.01em] text-ink-950">{title}</h2>
           {subtitle && <p className="mt-0.5 text-[12.5px] text-ink-500">{subtitle}</p>}
         </div>
-        {action && <div className="shrink-0">{action}</div>}
+        {/* Capped at the row's width, so a long action - a legend's pills -
+            wraps inside the card instead of running off it. */}
+        {action && <div className="max-w-full shrink-0">{action}</div>}
       </header>
       <div className={cx(bodyClassName ?? 'px-4 pb-4 sm:px-5 sm:pb-5')}>{children}</div>
     </section>
   );
 }
 
-/** The "see all" affordance in a panel header, so every one of them matches. */
+/**
+ * The "see all" affordance in a panel header, so every one of them matches:
+ * the reference's soft grey pill with a chevron.
+ */
 export function PanelLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <Link
       href={href}
-      className="press group inline-flex h-7.5 items-center gap-1 rounded-md border border-line-strong bg-paper px-2.5 text-[12.5px] font-medium text-ink-700 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+      className="press group inline-flex h-8 items-center gap-1 rounded-full bg-ink-100/70 px-3.5 text-[12.5px] font-medium text-ink-700 hover:bg-brand-50 hover:text-brand-700"
     >
       {children}
       <IconChevronRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
@@ -388,7 +417,7 @@ export function Stat({
   return (
     <div className="min-w-0 px-4 py-3 first:pl-0">
       <p className="text-[12.5px] text-ink-500">{label}</p>
-      <p className={cx('tnum mt-0.5 text-[22px] font-medium leading-7', valueTone)}>{value}</p>
+      <p className={cx('tnum mt-0.5 text-[22px] font-semibold leading-7 tracking-[-0.01em]', valueTone)}>{value}</p>
       {hint && <p className="text-[12px] text-ink-400">{hint}</p>}
     </div>
   );
@@ -399,12 +428,15 @@ export function Stat({
 /* ------------------------------------------------------------------ */
 
 /**
- * The headline figure at the top of a dashboard: a tinted icon tile and its
- * label, the figure, then how it moved.
+ * The headline figure at the top of a dashboard, as the reference draws it: a
+ * gradient card with the figure and its label on the left and the icon on a
+ * white disc on the right, then how it moved.
  *
- * The tint is not decoration and is never chosen for variety: it is the tone
- * the number already carries everywhere else in the product, so a red tile and
- * a red pill mean the same thing. `info` is the plain "this is a count" case.
+ * The card's colour comes from its place in the row (orange, purple, cyan,
+ * indigo - see `.kpi` in globals.css), so it never claims a status. Status is
+ * the `tone`: a figure that needs attention or is blocked carries an amber or
+ * red badge on its disc, named for screen readers, so the meaning a red tile
+ * used to carry is still there.
  *
  * The whole card is a link when it has somewhere to go - a number a manager
  * wants to act on should not make them hunt for the list behind it.
@@ -430,32 +462,64 @@ export function StatCard({
   /** A sparkline. Supporting context only - the figure is the message. */
   chart?: ReactNode;
 }) {
+  const flagged = tone === 'warn' || tone === 'bad';
+  // The figure shares its row with the icon disc, so a long one - a sum of
+  // money - steps down from 28px to fit the card's width (100cqi) less its
+  // padding, disc and gap. Inter Bold sets "PKR 1,994,000" at about 0.48em a
+  // character; 0.52 leaves a margin. A short count keeps the full size.
+  const chars = typeof value === 'string' || typeof value === 'number' ? String(value).length : 0;
   const body = (
     <>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p
+            className={cx(
+              'truncate font-bold leading-none tracking-[-0.02em]',
+              chars ? 'text-[clamp(15px,calc((100cqi-112px)/(var(--chars)*0.52)),28px)]' : 'text-[28px]',
+            )}
+            style={chars ? ({ '--chars': chars } as React.CSSProperties) : undefined}
+            title={chars ? String(value) : undefined}
+          >
+            {value}
+          </p>
+          <p className="mt-2.5 truncate text-[14px] font-medium text-white/95">{label}</p>
+        </div>
         {icon && (
-          <IconTile tone={tone} size={40} className="transition-transform duration-300 group-hover:scale-105">
-            {icon}
-          </IconTile>
+          <span
+            className="relative flex size-14 shrink-0 items-center justify-center rounded-full bg-white text-[var(--kpi-from)] shadow-[0_6px_16px_-8px_rgb(0_0_0/0.25)] transition-transform duration-300 group-hover:scale-105"
+            aria-hidden={!flagged}
+          >
+            <span aria-hidden className="[&_svg]:size-6">
+              {icon}
+            </span>
+            {flagged && (
+              <span
+                className={cx(
+                  'absolute -right-0.5 -top-0.5 size-4 rounded-full ring-[3px] ring-white',
+                  tone === 'bad' ? 'bg-bad-500' : 'bg-warn-500',
+                )}
+              >
+                <span className="sr-only">{tone === 'bad' ? 'Blocked' : 'Needs attention'}</span>
+              </span>
+            )}
+          </span>
         )}
-        <p className="min-w-0 truncate text-[14px] text-ink-500">{label}</p>
-      </div>
-      <div className="mt-3.5 flex items-end justify-between gap-3">
-        <p className="min-w-0 truncate text-[28px] font-medium leading-none tracking-[-0.02em] text-ink-950">
-          {value}
-        </p>
-        {chart && <div className="shrink-0">{chart}</div>}
       </div>
       {/* The change and what it is measured against, then the caption. A
           delta always names its period, so the two never read as one claim. */}
-      <div className="mt-3 min-h-[22px] space-y-1">
-        {delta ? <Delta {...delta} /> : null}
-        {hint && <p className="truncate text-[12.5px] leading-5 text-ink-400">{hint}</p>}
-      </div>
+      {(delta || hint || chart) && (
+        <div className="mt-4 flex items-end justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            {delta ? <Delta {...delta} inverse /> : null}
+            {hint && <p className="truncate text-[12.5px] leading-5 text-white/85">{hint}</p>}
+          </div>
+          {chart && <div className="kpi-chart shrink-0">{chart}</div>}
+        </div>
+      )}
     </>
   );
 
-  const className = cx('group block min-w-0 rounded-xl bg-paper p-4 shadow-card sm:p-5', href && 'lift');
+  const className = cx('kpi @container group block min-w-0 rounded-xl p-5', href && 'lift');
 
   return href ? (
     <Link href={href} className={className}>
@@ -477,10 +541,13 @@ export function Delta({
   pct,
   label,
   goodWhenUp = true,
+  inverse = false,
 }: {
   pct: number;
   label: string;
   goodWhenUp?: boolean;
+  /** On a gradient card: a white chip, still green or red inside. */
+  inverse?: boolean;
 }) {
   const flat = Math.round(pct) === 0;
   const up = pct > 0;
@@ -491,14 +558,22 @@ export function Delta({
     <span className="inline-flex min-w-0 items-center gap-1.5 text-[12.5px]">
       <span
         className={cx(
-          'tnum inline-flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-px text-[12px] font-medium',
-          flat ? 'bg-ink-100 text-ink-500' : good ? 'bg-ok-50 text-ok-700' : 'bg-bad-50 text-bad-700',
+          'tnum inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-px text-[12px] font-semibold',
+          // The chip is white in both themes, so its ink is the light theme's
+          // fixed status text, not a token that turns pale in dark mode.
+          inverse
+            ? cx('bg-white', flat ? 'text-[#4b4b57]' : good ? 'text-[#0a7a4a]' : 'text-[#b42330]')
+            : flat
+              ? 'bg-ink-100 text-ink-500'
+              : good
+                ? 'bg-ok-50 text-ok-700'
+                : 'bg-bad-50 text-bad-700',
         )}
       >
         {!flat && <Arrow size={12} strokeWidth={2.25} />}
         {flat ? 'No change' : `${up ? '+' : ''}${Math.round(pct)}%`}
       </span>
-      <span className="truncate text-ink-400">{label}</span>
+      <span className={cx('truncate', inverse ? 'text-white/85' : 'text-ink-400')}>{label}</span>
     </span>
   );
 }
@@ -529,7 +604,7 @@ export function Meter({
   const pct = Math.max(0, Math.min(100, Math.round((value / Math.max(1, max)) * 100)));
   return (
     <div
-      className={cx('h-1.5 overflow-hidden rounded-full', TONE_TRACK[tone], className)}
+      className={cx('h-2 overflow-hidden rounded-full', TONE_TRACK[tone], className)}
       role="meter"
       aria-valuenow={pct}
       aria-valuemin={0}

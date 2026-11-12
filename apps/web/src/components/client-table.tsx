@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { Paginated, Stage } from '@crm/shared';
+import { formatTotal, type Paginated, type Stage } from '@crm/shared';
 import { StageChip, StalenessPill } from './stage';
 import { Avatar, Card, EmptyState, LinkButton, Pill, cx } from './ui';
 import { relativeDays } from '@/lib/format';
@@ -265,7 +265,7 @@ export function Pagination({
   return (
     <div className="flex items-center justify-between gap-3 pt-3">
       <p className="tnum text-[13px] text-ink-500">
-        {from}-{to} of {data.total}
+        {from.toLocaleString('en-US')}-{to.toLocaleString('en-US')} of {formatTotal(data)}
       </p>
       <div className="flex items-center gap-2">
         {data.page > 1 ? (

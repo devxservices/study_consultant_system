@@ -111,13 +111,18 @@ export class NotificationsService {
   async list(actor: AuthUser, limit = 20): Promise<NotificationFeed> {
     // Loaded on every page, so the badge count rides along with the feed in
     // one round trip. It is a count of everything unread, not of the rows on
-    // this page; with no rows at all there is nothing unread either.
+    // this page; with no rows at all there is nothing unread either. It stops
+    // at 1,000 - the bell says "99+", its panel "999+" - so a backlog of a
+    // million unread costs no more than a thousand.
     const rows = await this.db
       .select({
         row: notifications,
         unread: sql<number>`(
-          select count(*)::int from notifications u
-          where u.user_id = ${actor.id}::uuid and u.read_at is null
+          select count(*)::int from (
+            select 1 from notifications u
+            where u.user_id = ${actor.id}::uuid and u.read_at is null
+            limit 1000
+          ) counted
         )`,
       })
       .from(notifications)

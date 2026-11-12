@@ -17,7 +17,13 @@ import { DeadlineList, type DeadlineItem } from '@/components/deadlines';
 import { HBarList } from '@/components/charts/hbar-list';
 import { RingMeter } from '@/components/charts/ring-meter';
 import { Sparkline } from '@/components/charts/sparkline';
-import { GeniusLineChart, LineLegend, type LineSeries, type TrendPoint } from '@/components/charts/genius-line-chart';
+import {
+  GeniusLineChart,
+  LineLegend,
+  SeriesFocusProvider,
+  type LineSeries,
+  type TrendPoint,
+} from '@/components/charts/genius-line-chart';
 import { AnnouncementFeed } from '@/components/announcements';
 import { actionTone } from '@/components/activity-feed';
 import { SummaryList, type SummaryRow } from '@/components/summary-list';
@@ -96,8 +102,8 @@ export default async function OverviewPage() {
     return days <= 7;
   }).length;
 
-  // The three monthly case flows, in the validated series order (blue, teal,
-  // coral). The chart carries a table view as well as its hover readout.
+  // The three monthly case flows, in the fixed series order (orange, cyan,
+  // purple). The chart carries a table view as well as its hover readout.
   const series: LineSeries[] = [
     { key: 'opened', label: 'Cases opened', color: 'var(--color-series-1)' },
     { key: 'approved', label: 'Visas approved', color: 'var(--color-series-2)' },
@@ -218,13 +224,17 @@ export default async function OverviewPage() {
 
       {/* The flow of cases, and how much of it is on track. */}
       <div className="mt-5 grid items-start gap-5 xl:grid-cols-[1.65fr_1fr]">
-        <Panel
-          title="Case flow"
-          subtitle="Cases opened, approved and refused, by month"
-          action={<LineLegend series={series} />}
-        >
-          <GeniusLineChart points={trends.points} series={series} />
-        </Panel>
+        {/* The legend's pills in the header pick which flow the chart brings
+            forward. */}
+        <SeriesFocusProvider>
+          <Panel
+            title="Case flow"
+            subtitle="Cases opened, approved and refused, by month"
+            action={<LineLegend series={series} />}
+          >
+            <GeniusLineChart points={trends.points} series={series} />
+          </Panel>
+        </SeriesFocusProvider>
 
         <Panel title="At a glance" subtitle="Live cases and decisions">
           <div className="grid grid-cols-2 gap-4">
@@ -270,7 +280,7 @@ export default async function OverviewPage() {
                   <Delta pct={kpis.newClientsDeltaPct} label="vs previous 30 days" />
                 )}
               </dt>
-              <dd className="text-[22px] font-medium text-ink-950">{kpis.newClients30}</dd>
+              <dd className="text-[22px] font-bold text-ink-950">{kpis.newClients30}</dd>
             </div>
             <div className="flex items-center justify-between gap-3 pt-3">
               <dt className="min-w-0">
@@ -279,7 +289,7 @@ export default async function OverviewPage() {
                   <Delta pct={kpis.documentsClearedDeltaPct} label="vs previous 30 days" />
                 )}
               </dt>
-              <dd className="text-[22px] font-medium text-ink-950">{kpis.documentsCleared30}</dd>
+              <dd className="text-[22px] font-bold text-ink-950">{kpis.documentsCleared30}</dd>
             </div>
           </dl>
         </Panel>

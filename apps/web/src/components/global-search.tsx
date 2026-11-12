@@ -156,7 +156,7 @@ export function GlobalSearch({ action }: { action: string }) {
             aria-expanded={showPanel}
             aria-controls={listId}
             aria-autocomplete="list"
-            className="h-10 w-full rounded-lg border border-transparent bg-paper pl-10 pr-10 text-[13.5px] text-ink-900 shadow-tile transition-[border-color,box-shadow] duration-150 placeholder:text-ink-400 focus:border-brand-400 focus:shadow-[0_0_0_4px_var(--color-brand-100)] focus:outline-none focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden"
+            className="h-10 w-full rounded-full border border-transparent bg-ink-50 pl-10 pr-10 text-[13.5px] text-ink-900 transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-ink-400 focus:border-brand-400 focus:bg-paper focus:shadow-[0_0_0_4px_var(--color-brand-100)] focus:outline-none focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden"
           />
           {loading ? (
             <span
@@ -165,7 +165,7 @@ export function GlobalSearch({ action }: { action: string }) {
             />
           ) : (
             <kbd
-              className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-line-strong bg-ink-50 px-1.5 py-0.5 text-[10.5px] font-medium text-ink-400 sm:block"
+              className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-line-strong bg-paper px-1.5 py-0.5 text-[10.5px] font-medium text-ink-400 sm:block"
               aria-hidden
             >
               /

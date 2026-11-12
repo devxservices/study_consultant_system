@@ -46,7 +46,8 @@ import { MessagingService } from '../mail/messaging.service';
 import { EntitlementsService } from '../tenancy/entitlements.service';
 import { tenantIdentity } from '../tenancy/tenant-links';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
-import { addDays, iso, page, today } from '../common/db-helpers';
+import { addDays, iso, today } from '../common/db-helpers';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { WorkflowsService } from './workflows.service';
 import type { StageRow } from './stage-rows';
 
@@ -231,8 +232,9 @@ export class AutomationService {
       query.ruleId ? eq(automationRuns.ruleId, query.ruleId) : undefined,
       query.status ? eq(automationRuns.status, query.status) : undefined,
     );
-    const [[count], rows] = await Promise.all([
-      this.db.select({ n: sql<number>`count(*)::int` }).from(automationRuns).where(where),
+    const pageNo = clampPage(query.page, query.pageSize);
+    const [count, rows] = await Promise.all([
+      countCapped(this.db, this.db.select({ one: sql`1` }).from(automationRuns).where(where)),
       this.db
         .select({
           run: automationRuns,
@@ -247,9 +249,9 @@ export class AutomationService {
         .where(where)
         .orderBy(desc(automationRuns.createdAt))
         .limit(query.pageSize)
-        .offset((query.page - 1) * query.pageSize),
+        .offset((pageNo - 1) * query.pageSize),
     ]);
-    return page(
+    return paged(
       rows.map((r) => ({
         id: r.run.id,
         ruleId: r.run.ruleId ?? '',
@@ -262,9 +264,9 @@ export class AutomationService {
         results: r.run.results as AutomationRunView['results'],
         createdAt: iso(r.run.createdAt),
       })),
-      count?.n ?? 0,
-      query.page,
+      pageNo,
       query.pageSize,
+      count,
     );
   }
 

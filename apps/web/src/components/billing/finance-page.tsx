@@ -9,7 +9,7 @@ import {
 } from '@crm/shared';
 import { apiFetch, qs } from '@/lib/api';
 import { formatDate } from '@/lib/format';
-import { Card, LinkButton, PageHeader, Panel, StatCard, cx } from '../ui';
+import { Card, LinkButton, PageHeader, Panel, StatCard, TAB_BAR, cx, tabClass } from '../ui';
 import { IconAlert, IconCheck, IconClock, IconPlus, IconWallet } from '../icons';
 import { BarChart } from '../charts/bar-chart';
 import { Pagination } from '../client-table';
@@ -194,29 +194,26 @@ export async function FinancePage({
       </div>
 
       <Card className="mt-5 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 pt-3 sm:px-5">
-          <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label="Invoice status">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+          <nav className={TAB_BAR} aria-label="Invoice status">
             {TABS.map((t) => (
               <Link
                 key={t.key}
                 href={href({ status: t.key, page: undefined })}
                 aria-current={status === t.key ? 'page' : undefined}
-                className={cx(
-                  'whitespace-nowrap border-b-2 px-3 pb-2.5 pt-1 text-[13.5px] font-medium',
-                  status === t.key ? 'border-brand-600 text-ink-950' : 'border-transparent text-ink-500 hover:text-ink-800',
-                )}
+                className={tabClass(status === t.key, 'sm')}
               >
                 {t.label}
               </Link>
             ))}
           </nav>
-          <form action={paths.list} className="pb-2.5">
+          <form action={paths.list}>
             <input type="hidden" name="status" value={status} />
             <input
               name="q"
               defaultValue={q}
               placeholder="Invoice number or client"
-              className="h-8 w-56 rounded-md border border-line-strong bg-paper px-2.5 text-[13px] text-ink-800 placeholder:text-ink-300"
+              className="h-8 w-56 rounded-full border border-transparent bg-ink-50 px-3.5 text-[13px] text-ink-800 placeholder:text-ink-400 focus:border-brand-400 focus:bg-paper focus:outline-none"
             />
           </form>
         </div>

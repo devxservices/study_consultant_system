@@ -76,6 +76,8 @@ import { NIL_UUID, iso, isoOrNull, today, withDocumentNumber } from '../common/d
 import { permissionHolders } from '../common/permission-holders';
 import { FinanceSettingsService } from '../finance/finance-settings.service';
 import { PdfService } from '../finance/pdf.service';
+import { StatsCacheService } from '../stats/stats-cache.service';
+import { clampPage, countCapped, paged } from '../common/paging';
 import {
   assertMoneyAccount,
   creditNoteLines,
@@ -208,7 +210,18 @@ export class BillingService {
     private readonly mail: MailService,
     private readonly settings: FinanceSettingsService,
     private readonly pdf: PdfService,
+    private readonly stats: StatsCacheService,
   ) {}
+
+  /**
+   * The stats-cache key of `scope(actor)`: the whole consultancy, or one
+   * consultant's clients. A client's own figures are not cached.
+   */
+  private cacheScope(actor: AuthUser): string | null {
+    if (actor.role === 'manager') return 'all';
+    if (actor.role === 'consultant') return seesAll(actor) ? 'all' : `c:${actor.consultantId ?? NIL_UUID}`;
+    return null;
+  }
 
   /* ---------------------------------------------------------------- */
   /* Scope                                                             */
@@ -425,9 +438,11 @@ export class BillingService {
         break;
     }
     const where = and(...conditions);
+    const page = clampPage(query.page, query.pageSize);
 
-    const [[total], rows] = await Promise.all([
-      this.db.select({ n: sql<number>`count(*)::int` }).from(invoices).innerJoin(clients, eq(clients.id, invoices.clientId)).where(where),
+    // Newest first, in the order of invoices_tenant_issued_idx.
+    const [count, rows] = await Promise.all([
+      countCapped(this.db, this.db.select({ one: sql`1` }).from(invoices).innerJoin(clients, eq(clients.id, invoices.clientId)).where(where)),
       this.db
         .select(this.summarySelection(day))
         .from(invoices)
@@ -436,17 +451,10 @@ export class BillingService {
         .where(where)
         .orderBy(desc(invoices.issueDate), desc(invoices.number))
         .limit(query.pageSize)
-        .offset((query.page - 1) * query.pageSize),
+        .offset((page - 1) * query.pageSize),
     ]);
     const plans = await this.plansFor(rows.map((r) => r.id));
-    const n = total?.n ?? 0;
-    return {
-      items: rows.map((r) => toSummary(r, plans.get(r.id), day)),
-      page: query.page,
-      pageSize: query.pageSize,
-      total: n,
-      totalPages: Math.max(1, Math.ceil(n / query.pageSize)),
-    };
+    return paged(rows.map((r) => toSummary(r, plans.get(r.id), day)), page, query.pageSize, count);
   }
 
   async get(actor: AuthUser, id: string): Promise<InvoiceView> {
@@ -1081,6 +1089,10 @@ export class BillingService {
     return this.ledgerRows(
       and(
         this.scope(actor),
+        // Always the invoice's own consultancy; stated on the payment too so
+        // payments_tenant_received_idx serves the newest-first order and the
+        // list stops at `limit` instead of joining every payment first.
+        eq(payments.tenantId, tenantOf(actor)),
         filter.invoiceId ? eq(payments.invoiceId, filter.invoiceId) : undefined,
         filter.clientId ? eq(payments.clientId, filter.clientId) : undefined,
       ),
@@ -1324,7 +1336,18 @@ export class BillingService {
   /* ---------------------------------------------------------------- */
 
   /** Invoiced, collected and outstanding, per currency, for everything in scope. */
-  async totals(actor: AuthUser, clientId?: string): Promise<BillingTotals[]> {
+  /**
+   * Money owed, collected and overdue, by currency. The consultancy-wide
+   * figures (the dashboards) come through the stats cache; one client's
+   * own totals are few rows and always live.
+   */
+  totals(actor: AuthUser, clientId?: string): Promise<BillingTotals[]> {
+    const scope = clientId ? null : this.cacheScope(actor);
+    if (!scope) return this.computeMoneyTotals(actor, clientId);
+    return this.stats.get(tenantOf(actor), `billing-totals:${scope}`, () => this.computeMoneyTotals(actor));
+  }
+
+  private async computeMoneyTotals(actor: AuthUser, clientId?: string): Promise<BillingTotals[]> {
     const day = today();
     const tenantId = tenantOf(actor);
     const where = and(this.scope(actor), clientId ? eq(invoices.clientId, clientId) : undefined);
@@ -1404,8 +1427,14 @@ export class BillingService {
   }
 
   /** Money collected per month, in the consultancy's main currency. */
-  async revenue(actor: AuthUser, months: number) {
-    const span = Math.min(24, Math.max(3, months));
+  revenue(actor: AuthUser, months: number) {
+    const span = Math.min(24, Math.max(3, Number.isFinite(months) ? Math.trunc(months) : 6));
+    const scope = this.cacheScope(actor);
+    if (!scope) return this.computeRevenue(actor, span);
+    return this.stats.get(tenantOf(actor), `billing-revenue:${span}:${scope}`, () => this.computeRevenue(actor, span));
+  }
+
+  private async computeRevenue(actor: AuthUser, span: number) {
     const since = addCalendarMonths(`${localIsoDate().slice(0, 7)}-01`, -(span - 1));
 
     // The currency with the most invoiced - the first row totals() would put

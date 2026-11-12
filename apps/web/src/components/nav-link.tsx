@@ -158,17 +158,18 @@ export function NavLink({
         aria-current={active ? 'page' : undefined}
         title={typeof children === 'string' ? children : undefined}
         className={cx(
-          'group/nav press relative flex h-11 items-center gap-3 rounded-lg px-3 text-[14px] group-data-[collapsed=true]/shell:justify-center group-data-[collapsed=true]/shell:px-0',
+          'group/nav press relative flex h-11 items-center gap-3.5 px-6 text-[14px] group-data-[collapsed=true]/shell:justify-center group-data-[collapsed=true]/shell:px-0',
           active
-            ? 'bg-white/[0.08] font-medium text-white'
-            : 'text-rail-muted hover:bg-white/[0.05] hover:text-rail-ink',
+            ? 'rail-active font-semibold text-brand-600'
+            : 'font-medium text-rail-muted hover:bg-rail-900 hover:text-rail-ink',
         )}
       >
-        {/* The active marker: a bar of the brand colour on the rail's edge. */}
+        {/* The active marker, as in the reference: a short bar of the brand
+            colour on the sidebar's far edge. */}
         <span
           aria-hidden
           className={cx(
-            'absolute -left-3 top-2 bottom-2 w-[3px] rounded-r-full bg-brand-400 transition-[opacity,transform] duration-200 group-data-[collapsed=true]/shell:-left-2',
+            'absolute right-0 top-1.5 bottom-1.5 w-1 rounded-l-full bg-brand-500 transition-[opacity,transform] duration-200',
             active ? 'scale-y-100 opacity-100' : 'scale-y-50 opacity-0',
           )}
         />
@@ -177,7 +178,7 @@ export function NavLink({
             size={19}
             className={cx(
               'shrink-0 transition-[color,transform] duration-200',
-              active ? 'text-brand-400' : 'text-rail-dim group-hover/nav:text-rail-ink',
+              active ? 'text-brand-500' : 'text-rail-dim group-hover/nav:text-rail-ink',
             )}
           />
         )}
@@ -189,7 +190,7 @@ export function NavLink({
           <span
             className={cx(
               'tnum ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none group-data-[collapsed=true]/shell:hidden',
-              active ? 'bg-white/15 text-white' : 'bg-warn-500 text-rail-950',
+              active ? 'bg-brand-600 text-white' : 'bg-warn-500 text-ink-950',
             )}
           >
             {badge > 99 ? '99+' : badge}
@@ -229,7 +230,7 @@ export function NavLink({
         <span className="relative">
           {IconComponent ? <IconComponent size={21} /> : null}
           {badge ? (
-            <span className="tnum absolute -right-2.5 -top-1.5 min-w-[16px] rounded-full bg-warn-500 px-1 text-center text-[10px] font-semibold leading-4 text-rail-950">
+            <span className="tnum absolute -right-2.5 -top-1.5 min-w-[16px] rounded-full bg-warn-500 px-1 text-center text-[10px] font-semibold leading-4 text-ink-950">
               {badge > 99 ? '99+' : badge}
             </span>
           ) : null}
@@ -247,7 +248,7 @@ export function NavLink({
       aria-current={active ? 'page' : undefined}
       className={cx(
         'press flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium',
-        active ? 'bg-brand-50 text-brand-700' : 'text-ink-600 hover:bg-ink-50 hover:text-ink-950',
+        active ? 'rail-active text-brand-600' : 'text-ink-600 hover:bg-ink-50 hover:text-ink-950',
       )}
     >
       {IconComponent ? <IconComponent size={17} className="shrink-0 opacity-80" /> : null}

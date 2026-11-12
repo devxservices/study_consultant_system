@@ -10,7 +10,8 @@ import { formatDate } from '@/lib/format';
 
 export const COLOR_DOT: Record<string, string> = {
   slate: 'bg-ink-400',
-  blue: 'bg-info-500',
+  // A named hue, so a literal: the info token is the theme's purple.
+  blue: 'bg-[#5a75f4]',
   teal: 'bg-[oklch(0.62_0.11_190)]',
   green: 'bg-ok-500',
   amber: 'bg-warn-500',

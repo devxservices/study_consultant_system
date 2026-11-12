@@ -105,8 +105,8 @@ export function NotificationBell({ initial, role }: { initial: NotificationFeed;
           {...props}
           aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
           className={cx(
-            'press group relative flex size-10 items-center justify-center rounded-lg shadow-tile',
-            open ? 'bg-brand-600 text-white' : 'bg-paper text-ink-500 hover:text-brand-600',
+            'press group relative flex size-10 items-center justify-center rounded-full',
+            open ? 'bg-brand-600 text-white' : 'bg-ink-50 text-ink-500 hover:bg-brand-50 hover:text-brand-600',
           )}
         >
           <IconBell
@@ -114,7 +114,7 @@ export function NotificationBell({ initial, role }: { initial: NotificationFeed;
             className={cx('origin-top transition-transform', fresh && 'animate-[bell_0.9s_ease-in-out]')}
           />
           {unread > 0 && (
-            <span className="tnum absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-bad-500 px-1 text-[10px] font-semibold text-white ring-2 ring-canvas">
+            <span className="tnum absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-bad-500 px-1 text-[10px] font-semibold text-white ring-2 ring-paper">
               {unread > 99 ? '99+' : unread}
             </span>
           )}
@@ -128,7 +128,8 @@ export function NotificationBell({ initial, role }: { initial: NotificationFeed;
               Notifications
               {unread > 0 && (
                 <span className="tnum ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-[11.5px] font-medium text-brand-700">
-                  {unread} new
+                  {/* The API counts unread up to 1,000; past that it is "999+". */}
+                  {unread > 999 ? '999+' : unread} new
                 </span>
               )}
             </p>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {
   DOCUMENT_META,
+  formatTotal,
   type AnnouncementView,
   type DocumentType,
   type DocumentView,
@@ -128,7 +129,7 @@ export default async function DeskPage() {
         title={`${greeting()}, ${firstName}`}
         subtitle={
           pending.total > 0
-            ? `${pending.total} document${pending.total === 1 ? '' : 's'} waiting on you.`
+            ? `${formatTotal(pending)} document${pending.total === 1 ? '' : 's'} waiting on you.`
             : 'Nothing is waiting on you right now.'
         }
         actions={
@@ -195,10 +196,10 @@ export default async function DeskPage() {
           subtitle={
             pending.total === 0
               ? 'Nothing waiting'
-              : `${pending.total} document${pending.total === 1 ? '' : 's'}, oldest first`
+              : `${formatTotal(pending)} document${pending.total === 1 ? '' : 's'}, oldest first`
           }
           action={pending.total > 5 ? <PanelLink href="/desk/reviews">See all</PanelLink> : null}
-          bodyClassName="px-2 pb-3 sm:px-3"
+          bodyClassName="px-4 pb-4 sm:px-5 sm:pb-5"
         >
           {pending.items.length === 0 ? (
             <EmptyState
@@ -207,19 +208,19 @@ export default async function DeskPage() {
               description="New uploads from your clients will land here."
             />
           ) : (
-            <ul>
+            <ul className="space-y-2.5">
               {pending.items.map((d) => (
                 <li key={d.id}>
                   <Link
                     href={d.caseId ? `/desk/cases/${d.caseId}` : `/desk/documents?clientId=${d.clientId}&view=review`}
-                    className="group flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-ink-50"
+                    className="press group flex items-center gap-3 rounded-xl bg-ink-50 px-3.5 py-3 hover:bg-ink-100"
                   >
-                    <Avatar name={d.clientName ?? 'Agency'} size={38} />
+                    <Avatar name={d.clientName ?? 'Agency'} size={40} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] font-medium text-ink-950 transition-colors group-hover:text-brand-700">
+                      <span className="block truncate text-[14px] font-semibold text-ink-950 transition-colors group-hover:text-brand-700">
                         {d.clientName}
                       </span>
-                      <span className="block truncate text-[12px] text-ink-400">
+                      <span className="mt-0.5 block truncate text-[12.5px] font-medium text-brand-700">
                         {DOCUMENT_META[d.type as DocumentType]?.label ?? d.fileName} &middot; uploaded {relativeDays(d.uploadedAt)}
                       </span>
                     </span>
@@ -236,7 +237,7 @@ export default async function DeskPage() {
           subtitle={
             stuck.total === 0
               ? 'Every case is inside its stage limit'
-              : `${stuck.total} case${stuck.total === 1 ? '' : 's'} past the limit`
+              : `${formatTotal(stuck)} case${stuck.total === 1 ? '' : 's'} past the limit`
           }
           bodyClassName="pb-2"
         >
@@ -320,7 +321,7 @@ export default async function DeskPage() {
             <div className="flex items-center gap-5">
               <RingMeter value={load} tone={loadTone(load)} size={112} label="Your workload" caption="used" />
               <div className="min-w-0">
-                <p className="text-[22px] font-medium leading-tight text-ink-950">
+                <p className="text-[22px] font-bold leading-tight text-ink-950">
                   {me.activeClients}
                   <span className="text-[14px] font-normal text-ink-400"> of {me.maxActiveClients} clients</span>
                 </p>

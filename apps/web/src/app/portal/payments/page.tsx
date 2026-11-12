@@ -81,7 +81,7 @@ export default async function PortalPaymentsPage() {
           {next && (
             <Link
               href={`/portal/payments/invoices/${next.invoice.id}`}
-              className="press mt-4 inline-flex h-9 items-center rounded-lg bg-brand-600 px-4 text-[14px] font-medium text-white hover:brightness-[0.93]"
+              className="press mt-4 inline-flex h-9 items-center rounded-full bg-brand-600 px-4 text-[14px] font-semibold text-white hover:brightness-[0.93]"
             >
               Pay or send proof of payment
             </Link>

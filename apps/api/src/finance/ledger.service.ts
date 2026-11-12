@@ -24,7 +24,8 @@ import type { Db } from '../db/connection';
 import { bankLines, clients, journalEntries, journalLines, ledgerAccounts, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
-import { iso, isUniqueViolation, page, today } from '../common/db-helpers';
+import { iso, isUniqueViolation, today } from '../common/db-helpers';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { postEntry, reverseEntry, systemAccountIds } from './journal';
 
 type AccountRow = typeof ledgerAccounts.$inferSelect;
@@ -183,18 +184,19 @@ export class LedgerService {
     }
     if (query.q) conds.push(or(ilike(journalEntries.memo, `%${query.q}%`), ilike(journalEntries.number, `%${query.q}%`)));
     const where = and(...conds);
-    const [[count], rows] = await Promise.all([
-      this.db.select({ n: sql<number>`count(*)::int` }).from(journalEntries).where(where),
+    const pageNo = clampPage(query.page, query.pageSize);
+    const [count, rows] = await Promise.all([
+      countCapped(this.db, this.db.select({ one: sql`1` }).from(journalEntries).where(where)),
       this.db
         .select({ id: journalEntries.id })
         .from(journalEntries)
         .where(where)
         .orderBy(desc(journalEntries.entryDate), desc(journalEntries.number))
         .limit(query.pageSize)
-        .offset((query.page - 1) * query.pageSize),
+        .offset((pageNo - 1) * query.pageSize),
     ]);
     const items = await this.entries(rows.map((r) => r.id));
-    return page(items, count?.n ?? 0, query.page, query.pageSize);
+    return paged(items, pageNo, query.pageSize, count);
   }
 
   async entry(actor: AuthUser, id: string): Promise<JournalEntryView> {

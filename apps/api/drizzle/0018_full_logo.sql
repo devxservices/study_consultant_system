@@ -1,0 +1,1 @@
+ALTER TABLE "tenants" ADD COLUMN "full_logo_key" text;

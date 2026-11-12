@@ -102,51 +102,46 @@ export default async function PortalOverviewPage() {
     <div className="space-y-5">
       <PageStamp />
       <div>
-        <h1 className="text-[22px] font-medium tracking-[-0.01em] text-ink-950">
+        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink-950">
           Hello, {user.fullName.split(' ')[0]}
         </h1>
         <p className="mt-0.5 text-[14px] text-ink-500">Here is where your application stands.</p>
       </div>
 
-      {/* The five-second answer, on the consultancy's own colour. The card
-          darkens toward one corner with an overlay rather than a darker brand
-          step: in dark mode the high steps are light, and the white type on
-          this card has to stay readable whatever colour a consultancy picks. */}
+      {/* The five-second answer, on the consultancy's own colour, in the
+          reference's gradient-card style: the colour fades from the brand's
+          own step towards a pale tint of it (`.surface-brand`). */}
       {isDone ? (
-        <section className="rounded-2xl bg-ok-50 p-6 shadow-card ring-1 ring-ok-200">
+        <section className="rounded-xl bg-ok-50 p-6 shadow-card ring-1 ring-ok-200">
           <p className="text-[13px] text-ok-700">Your application is at</p>
-          <h2 className="mt-1 text-[26px] font-medium leading-8 tracking-[-0.02em] text-ok-700">
+          <h2 className="mt-1 text-[26px] font-bold leading-8 tracking-[-0.02em] text-ok-700">
             {def.clientLabel}
           </h2>
           <p className="mt-2 text-[14px] leading-relaxed text-ok-700/90">{def.clientDescription}</p>
         </section>
       ) : (
-        <section className="relative overflow-hidden rounded-2xl bg-brand-600 p-6 text-white shadow-raise sm:p-7">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,transparent_35%,rgb(0_0_0/0.28))]"
-          />
-          <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-white/[0.07]" />
-          <div aria-hidden className="pointer-events-none absolute -bottom-24 right-24 size-56 rounded-full bg-white/[0.05]" />
+        <section className="surface-brand relative overflow-hidden rounded-xl p-6 sm:p-7">
+          <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-white/[0.1]" />
+          <div aria-hidden className="pointer-events-none absolute -bottom-24 right-24 size-56 rounded-full bg-white/[0.08]" />
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] text-white/75">Your application is at</p>
-              <h2 className="mt-1 text-[26px] font-medium leading-8 tracking-[-0.02em]">{def.clientLabel}</h2>
-              <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-white/85">{def.clientDescription}</p>
+              <p className="text-[13px] font-medium text-white/90">Your application is at</p>
+              <h2 className="mt-1 text-[26px] font-bold leading-8 tracking-[-0.02em]">{def.clientLabel}</h2>
+              <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-white/95">{def.clientDescription}</p>
               <div className="mt-5 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white/15 px-3 py-1 text-[12.5px] font-medium">
+                <span className="rounded-full bg-white/25 px-3 py-1 text-[12.5px] font-semibold">
                   {detail.targetUniversity ?? detail.targetCountry}
                 </span>
                 {detail.intake && (
-                  <span className="rounded-full bg-white/15 px-3 py-1 text-[12.5px] font-medium">{detail.intake}</span>
+                  <span className="rounded-full bg-white/25 px-3 py-1 text-[12.5px] font-semibold">{detail.intake}</span>
                 )}
-                <span className="text-[12.5px] text-white/70">Since {formatDate(detail.stageEnteredAt)}</span>
+                <span className="text-[12.5px] font-medium text-white/90">Since {formatDate(detail.stageEnteredAt)}</span>
               </div>
             </div>
             {docRequired > 0 && (
               <div className="flex shrink-0 items-center gap-4 sm:flex-col sm:gap-2">
                 <RingMeter value={pct} inverse size={116} stroke={10} label="Documents approved" caption="approved" />
-                <p className="text-[12.5px] text-white/80">
+                <p className="text-[12.5px] font-medium text-white/90">
                   {docApproved} of {docRequired} documents
                 </p>
               </div>

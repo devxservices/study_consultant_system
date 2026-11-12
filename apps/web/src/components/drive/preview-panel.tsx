@@ -14,7 +14,7 @@ import {
   type ShareLinkView,
 } from '@crm/shared';
 import { formatBytes, formatDate } from '@/lib/format';
-import { Button, Pill, cx } from '../ui';
+import { Button, Pill, TAB_BAR, cx, tabClass } from '../ui';
 import { callApi, FormAlert } from '../forms';
 import { IconClose, IconDownload, IconShare, IconUndo } from '../icons';
 import { GrantsEditor, ShareDialog, TextDialog } from './dialogs';
@@ -161,17 +161,14 @@ export function PreviewPanel({
           </div>
         )}
 
-        <nav className="mt-2 flex gap-1 border-b border-line px-3" aria-label="Document sections">
+        <nav className={cx(TAB_BAR, 'mt-3 gap-1.5 border-b border-line px-3 pb-3')} aria-label="Document sections">
           {(['details', 'versions', 'comments', ...(canShare ? (['sharing'] as const) : []), ...(manager ? (['access'] as const) : [])] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
               aria-current={tab === t ? 'page' : undefined}
-              className={cx(
-                'border-b-2 px-2.5 pb-2 pt-2 text-[13px] font-medium capitalize',
-                tab === t ? 'border-brand-600 text-ink-950' : 'border-transparent text-ink-500 hover:text-ink-800',
-              )}
+              className={cx(tabClass(tab === t, 'sm'), 'px-3 capitalize')}
             >
               {t}
             </button>

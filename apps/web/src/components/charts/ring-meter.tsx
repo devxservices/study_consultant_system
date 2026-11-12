@@ -27,7 +27,7 @@ export function RingMeter({
   value,
   tone = 'info',
   size = 128,
-  stroke = 11,
+  stroke = 14,
   label,
   caption,
   inverse = false,
@@ -87,7 +87,7 @@ export function RingMeter({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
         <span
-          className={inverse ? 'font-medium leading-none tracking-[-0.02em] text-white' : 'font-medium leading-none tracking-[-0.02em] text-ink-950'}
+          className={inverse ? 'font-bold leading-none tracking-[-0.02em] text-white' : 'font-bold leading-none tracking-[-0.02em] text-ink-950'}
           style={{ fontSize: Math.round(size * 0.2) }}
         >
           {pct}

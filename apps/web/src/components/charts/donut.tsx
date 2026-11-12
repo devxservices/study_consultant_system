@@ -16,8 +16,9 @@ const TONE_COLOR: Record<HealthSegment['tone'], string> = {
   bad: 'var(--color-bad-500)',
 };
 
-const SIZE = 176;
-const STROKE = 18;
+// The reference's proportions: a thick ring, about a sixth of its width.
+const SIZE = 184;
+const STROKE = 30;
 const R = (SIZE - STROKE) / 2;
 const C = 2 * Math.PI * R;
 
@@ -31,8 +32,9 @@ const C = 2 * Math.PI * R;
  *
  * These are status colours, not a series palette, and status colour never
  * carries meaning alone here: every segment is named, counted and given its
- * share in the legend beside it, so the chart reads with no colour vision at
- * all. Segments sweep in once on arrival, separated by a 2px gap of card.
+ * share in the legend beneath it - one row, as in the reference - so the chart
+ * reads with no colour vision at all. Segments sweep in once on arrival,
+ * separated by a 2px gap of card.
  */
 export function CaseHealthDonut({
   segments,
@@ -65,7 +67,7 @@ export function CaseHealthDonut({
   const focused = segments.find((s) => s.key === hover) ?? null;
 
   return (
-    <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
+    <div className="flex flex-col items-center gap-5">
       <div className="relative shrink-0" style={{ width: SIZE, height: SIZE }}>
         <svg
           width={SIZE}
@@ -91,7 +93,7 @@ export function CaseHealthDonut({
                 r={R}
                 fill="none"
                 stroke={TONE_COLOR[a.tone]}
-                strokeWidth={hover === a.key ? STROKE + 5 : STROKE}
+                strokeWidth={hover === a.key ? STROKE + 6 : STROKE}
                 strokeDasharray={`${a.dash} ${C - a.dash}`}
                 strokeDashoffset={-a.offset}
                 className="chart-arc transition-[stroke-width] duration-200"
@@ -104,7 +106,7 @@ export function CaseHealthDonut({
         </svg>
 
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span key={focused?.key ?? 'total'} className="chart-tip text-[30px] font-medium leading-9 tracking-[-0.02em] text-ink-950">
+          <span key={focused?.key ?? 'total'} className="chart-tip text-[30px] font-bold leading-9 tracking-[-0.02em] text-ink-950">
             {focused ? focused.count : total}
           </span>
           <span className="max-w-[96px] text-[11.5px] leading-4 text-ink-400">
@@ -113,7 +115,7 @@ export function CaseHealthDonut({
         </div>
       </div>
 
-      <ul className="w-full min-w-0 space-y-1.5">
+      <ul className="flex w-full min-w-0 flex-wrap items-center justify-center gap-x-1 gap-y-1">
         {segments.map((s) => {
           const pct = total === 0 ? 0 : Math.round((s.count / total) * 100);
           return (
@@ -125,18 +127,19 @@ export function CaseHealthDonut({
               onFocus={() => setHover(s.key)}
               onBlur={() => setHover(null)}
               className={cx(
-                'flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-200',
+                'flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-200',
                 hover === s.key ? 'bg-ink-50' : 'bg-transparent',
               )}
+              title={`${s.count} ${s.label.toLowerCase()}`}
             >
               <span
-                className="size-2.5 shrink-0 rounded-full"
+                className="size-2 shrink-0 rounded-full"
                 style={{ background: TONE_COLOR[s.tone] }}
                 aria-hidden
               />
-              <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink-700">{s.label}</span>
-              <span className="tnum shrink-0 text-[13.5px] font-medium text-ink-950">{s.count}</span>
-              <span className="tnum w-10 shrink-0 text-right text-[12.5px] text-ink-400">{pct}%</span>
+              <span className="whitespace-nowrap text-[13px] text-ink-500">{s.label}</span>
+              <span className="tnum ml-1 shrink-0 text-[13px] font-bold text-ink-950">{pct}%</span>
+              <span className="sr-only">, {s.count} cases</span>
             </li>
           );
         })}

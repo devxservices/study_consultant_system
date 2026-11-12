@@ -89,14 +89,15 @@ export function BarChart({
               x2={width - PAD.right}
               y1={geom.y(t)}
               y2={geom.y(t)}
-              stroke={t === 0 ? 'var(--color-line-strong)' : 'var(--color-line)'}
+              stroke="var(--color-line-strong)"
+              strokeDasharray={t === 0 ? undefined : '4 5'}
             />
             <text
               x={PAD.left - 8}
               y={geom.y(t)}
               textAnchor="end"
               dominantBaseline="middle"
-              className="tnum fill-ink-400 text-[10.5px]"
+              className="tnum fill-ink-500 text-[10.5px]"
             >
               {compact(t / scale)}
             </text>
@@ -125,7 +126,7 @@ export function BarChart({
                 x={cx}
                 y={HEIGHT - 8}
                 textAnchor="middle"
-                className={hover === i ? 'fill-ink-800 text-[11px] font-medium' : 'fill-ink-400 text-[11px]'}
+                className={hover === i ? 'fill-ink-900 text-[11px] font-semibold' : 'fill-ink-500 text-[11px]'}
               >
                 {p.label}
               </text>

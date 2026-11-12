@@ -11,7 +11,7 @@ import type {
 import { apiFetch } from '@/lib/api';
 import { can } from '@/lib/permissions';
 import { formatDate } from '@/lib/format';
-import { Card, EmptyState, PageHeader, Pill, cx } from '../ui';
+import { Card, EmptyState, PageHeader, Pill, TAB_BAR, cx, tabClass } from '../ui';
 import { ActionButton } from '../forms';
 import { NoAccess } from '../no-access';
 import { ChecklistsEditor, DocumentTypesEditor, DriveSettingsForm, FolderTemplatesEditor } from './settings-editors';
@@ -47,16 +47,13 @@ export async function DriveSettingsPage({ user, basePath, tab: raw }: { user: Au
         subtitle="What students may upload, how documents are organised and named, which checklists apply, and who can see what."
         breadcrumb={[{ href: basePath, label: 'Documents' }, { label: 'Settings' }]}
       />
-      <nav className="-mb-px mb-5 flex gap-1 overflow-x-auto border-b border-line" aria-label="Settings">
+      <nav className={cx(TAB_BAR, 'mb-5 pb-1')} aria-label="Settings">
         {TABS.filter((t) => t.key !== 'access' || manager).map((t) => (
           <Link
             key={t.key}
             href={`${basePath}/settings${t.key === 'general' ? '' : `?tab=${t.key}`}`}
             aria-current={tab === t.key ? 'page' : undefined}
-            className={cx(
-              'whitespace-nowrap border-b-2 px-3 pb-2.5 pt-1 text-[13.5px] font-medium',
-              tab === t.key ? 'border-brand-600 text-ink-950' : 'border-transparent text-ink-500 hover:text-ink-800',
-            )}
+            className={tabClass(tab === t.key)}
           >
             {t.label}
           </Link>

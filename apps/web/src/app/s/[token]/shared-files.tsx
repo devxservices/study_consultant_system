@@ -119,7 +119,7 @@ export function SharedFiles({ token }: { token: string }) {
                   View
                 </Button>
                 {!view.viewOnly && (
-                  <a href={fileUrl(i.id, true)} className="press inline-flex h-8 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-[13px] font-medium text-white">
+                  <a href={fileUrl(i.id, true)} className="press inline-flex h-8 items-center gap-1.5 rounded-full bg-brand-600 px-3 text-[13px] font-semibold text-white">
                     <IconDownload size={15} />
                     Download
                   </a>

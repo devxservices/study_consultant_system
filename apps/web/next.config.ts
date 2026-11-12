@@ -66,10 +66,16 @@ const nextConfig: NextConfig = {
       { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
       { key: 'Content-Security-Policy', value: "frame-ancestors 'self'; object-src 'none'; base-uri 'self'" },
     ];
+    // Logo and icon files are only ever images: opened on their own, they may
+    // load nothing and run nothing.
+    const imageOnly = [{ key: 'Content-Security-Policy', value: "default-src 'none'; frame-ancestors 'none'; sandbox" }];
     return [
       { source: '/:path*', headers: securityHeaders },
       { source: '/api/documents/:id/file', headers: sameOriginFrame },
       { source: '/api/share/:token/files/:id', headers: sameOriginFrame },
+      { source: '/brand-icon', headers: imageOnly },
+      { source: '/brand-icon/:path*', headers: imageOnly },
+      { source: '/api/tenancy/logo/:path*', headers: imageOnly },
     ];
   },
   transpilePackages: ['@crm/shared'],

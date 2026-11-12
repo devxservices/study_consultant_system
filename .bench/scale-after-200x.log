@@ -1,0 +1,73 @@
+
+> @crm/api@0.1.0 bench
+> tsc -p tsconfig.test.json && node .test-build/test/perf.bench.js
+
+
+Scale 200x - 8600 clients, 3204 audit rows - 5 runs each (seeded in 49771 ms)
+
+endpoint                       status  median ms   p95 ms  queries     bytes
+auth: who am I                    200        4.0      6.3        1      1081
+clients: list (25)                200       25.5     30.4        4     20826
+clients: search                   200       52.2     56.0        4     21198
+clients: sort stalest             200       46.7     48.4        4     21201
+clients: sort stage               200      102.2    105.0        4     20701
+drive: students                   200      107.0    112.2        8      5995
+clients: one                      200       10.0     13.0        4      1875
+cases: one                        200       11.4     13.2        7      5886
+documents: review queue           200       20.7     25.2        4     72840
+documents: one case               200        9.5     11.8        5      4761
+messages: threads                 200      108.3    109.8        3     17677
+messages: unread                  200       10.4     12.9        2        14
+messages: history                 200        7.3      9.6        3      1844
+notifications                     200        4.4      6.5        2        23
+analytics: kpis                   200        4.8      5.3        2       228
+analytics: funnel                 200        4.4      6.1        2      1153
+analytics: trends                 200        4.8      5.6        2       610
+analytics: health                 200        4.0      6.6        2       225
+analytics: stuck                  200       10.3     12.1        3     11166
+analytics: activity               200       10.2     12.5        2      2440
+analytics: deadlines              200        5.1      6.2        2     29177
+analytics: destinations           200        4.3      9.2        2       403
+analytics: sources                200        3.9      4.9        2       357
+audit: feed                       200       14.6     18.3        3     26584
+audit: filtered                   200       23.7     28.6        3     27201
+billing: invoices                 200      173.5    175.1        4      9705
+billing: totals                   200        4.0      6.5        2       142
+billing: ledger                   200       35.6     39.8        2     24895
+billing: revenue                  200        3.9      6.4        2       380
+consultants: workload             200        5.2      6.2        3      1890
+team: members                     200        5.3      7.6        3      1308
+tasks: open                       200       11.5     11.9        3     13890
+tasks: counts                     200        3.8      6.2        2        56
+tenancy: current                  200        0.5      0.6        0       246
+menu: plan usage                  200        3.9      5.5        2       370
+menu: stuck badge                 200        8.5     12.8        3       509
+menu: consultant tasks            200        3.9      4.4        2        56
+menu: consultant unread           200       10.0     12.1        2        14
+consultant: clients               200       16.6     21.3        4     20826
+consultant: kpis                  200        4.1      4.8        2       224
+consultant: review queue          200       62.0     62.7        4     72938
+consultant: workload              200       19.2     24.1        2       414
+client: own record                200        6.6      7.5        3      1875
+client: own documents             200        9.2     11.8        5      4761
+client: messages                  200        7.2      8.5        3      1844
+export: clients CSV               200      542.7    614.4        3   2540241
+
+sum of medians 1546.9 ms, sum of queries 136; rss 661 MB, heap 172 MB
+
+cached figures, compute ms (a first visit, or a refresh after a change):
+  health:all                                           195
+  deadlines:30:all                                     111
+  kpis:all                                              82
+  billing-totals:all                                    63
+  kpis:c:b275e1a6-98dc-4d0c-84e3-4cd0e6d6dbe4           45
+  roster-counts                                         33
+  trends:6:all                                          32
+  billing-revenue:6:all                                 30
+  sources:all                                           24
+  usage                                                 21
+  funnel:all                                             8
+  destinations:all                                       6
+  tasks:consultant:b275e1a6-98dc-4d0c-84e3-4cd0e6d6dbe4:0c400740-5c68-4dce-bb56-31e81a968768:mine       5
+  tasks:manager:-:7d6d2b68-2109-4290-9cc7-23cb9dce7004:all       3
+exit 0

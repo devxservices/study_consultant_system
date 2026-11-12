@@ -21,7 +21,7 @@ export interface FunnelStage {
  * strict drop-off sequence anyway - cases enter partway through and move back.
  * Ordered categories with long names read better horizontally.
  *
- * Two series only, and the second one is a status: series blue for moving,
+ * Two series only, and the second one is a status: series orange for moving,
  * red for stalled. Fixed colours rather than the brand, so a consultancy's own
  * colour can never be mistaken for either. Every bar carries its number
  * directly, so colour is never the only channel; bars grow in from the shared

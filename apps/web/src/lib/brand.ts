@@ -37,6 +37,46 @@ export function brandCss(hex: string | null | undefined): string | null {
   ].join('');
 }
 
+/**
+ * The two fills of the monogram tile, brand-500 into brand-600 - the same pair
+ * the menu's tile is painted with, so the browser tab and the menu match.
+ */
+export function brandTileStops(hex: string | null | undefined): [string, string] {
+  if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) return ['#fb9858', '#e8702a'];
+  const ramp = lightRamp(toOklch(hex));
+  return [ramp['500'], ramp['600']];
+}
+
+/**
+ * The monogram tile's proportions, as fractions of its side. The menu tile
+ * (CSS) and the browser-tab icon (SVG) both use these, in the same Inter Bold,
+ * so the two are one mark at different sizes.
+ */
+export const MONOGRAM = { radius: 0.26, fontTwo: 0.4, fontOne: 0.48, tracking: -0.03 } as const;
+
+export function monogramFontRatio(initials: string): number {
+  return Array.from(initials).length > 1 ? MONOGRAM.fontTwo : MONOGRAM.fontOne;
+}
+
+/** Words a monogram skips: "The Study Hub" is SH, not TS. */
+const FILLER = new Set(['the', 'of', 'and', 'for']);
+
+/**
+ * Up to two initials: "Main consultancy" is MC, "Future Path Education" FP,
+ * "Acme" A. Any script's letters count, so an Urdu name gets its own initial.
+ */
+export function monogram(name: string): string {
+  const words = name
+    .split(/[\s\-_/.]+/)
+    .filter((w) => /\p{L}/u.test(w))
+    .filter((w, i, all) => !FILLER.has(w.toLowerCase()) || all.length === 1);
+  const initials = words
+    .slice(0, 2)
+    .map((w) => Array.from(w).find((ch) => /\p{L}/u.test(ch)) ?? '')
+    .join('');
+  return (initials || 'C').toLocaleUpperCase();
+}
+
 function declarations(ramp: Record<Step, string>): string {
   return STEPS.map((s) => `--color-brand-${s}:${ramp[s]};`).join('');
 }

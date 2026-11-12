@@ -263,7 +263,7 @@ export function FormSection({
 }) {
   return (
     <section className={cx('rounded-xl bg-paper p-4 shadow-card sm:p-5', className)}>
-      <h2 className="text-[16px] font-medium text-ink-950">{title}</h2>
+      <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-ink-950">{title}</h2>
       {description && <p className="mt-0.5 text-[12.5px] text-ink-500">{description}</p>}
       <div className="mt-4">{children}</div>
     </section>

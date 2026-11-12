@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { Paginated } from '@crm/shared';
+import { formatTotal, type Paginated } from '@crm/shared';
 import { apiFetch, qs } from '@/lib/api';
 import { Card, EmptyState, LinkButton, PageHeader } from '@/components/ui';
 import { StuckCaseRow, type StuckCase } from '@/components/stuck-cases';
@@ -38,7 +38,7 @@ export default async function StuckPage({
         subtitle={
           data.total === 0
             ? 'Nothing has stalled.'
-            : `${data.total} case${data.total === 1 ? '' : 's'} past the limit for their stage.`
+            : `${formatTotal(data)} case${data.total === 1 ? '' : 's'} past the limit for their stage.`
         }
       />
 

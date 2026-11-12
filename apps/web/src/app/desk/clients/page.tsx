@@ -1,4 +1,4 @@
-import type { Paginated } from '@crm/shared';
+import { formatTotal, type Paginated } from '@crm/shared';
 import { apiFetch, qs } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { can } from '@/lib/permissions';
@@ -48,7 +48,7 @@ export default async function DeskClientsPage({
         title="Clients"
         subtitle={
           term
-            ? `${data.total} client${data.total === 1 ? '' : 's'} matching “${term}”.`
+            ? `${formatTotal(data)} client${data.total === 1 ? '' : 's'} matching “${term}”.`
             : can(user, 'client.view_all')
               ? 'Every client in the consultancy, and what each of them is waiting on.'
               : 'Everyone assigned to you, and what each of them is waiting on.'

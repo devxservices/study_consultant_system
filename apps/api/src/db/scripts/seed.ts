@@ -180,6 +180,15 @@ const randInt = (min: number, max: number) => Math.floor(rand() * (max - min + 1
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
 
 async function main() {
+  // Seeding starts by deleting every consultancy's data and files. On a live
+  // server that is a disaster one mistyped command away, so production
+  // refuses unless the wipe is asked for by name (a demo server, say).
+  if (process.env.NODE_ENV === 'production' && !process.argv.includes('--wipe-production')) {
+    console.error('[seed] NODE_ENV=production: refusing. Seeding DELETES ALL DATA first.');
+    console.error('[seed] Only on a demo server you mean to wipe: add --wipe-production.');
+    process.exit(1);
+  }
+
   const handle = await createDb();
   const db = handle.db;
 

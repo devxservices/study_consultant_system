@@ -114,7 +114,7 @@ export function AuditFilters({
         <div className="flex items-center gap-2">
           <button
             type="submit"
-            className="press h-9 rounded-lg bg-brand-600 px-4 text-[13.5px] font-medium text-white hover:brightness-[0.93]"
+            className="press h-9 rounded-full bg-brand-600 px-4 text-[13.5px] font-semibold text-white hover:brightness-[0.93]"
           >
             Apply
           </button>

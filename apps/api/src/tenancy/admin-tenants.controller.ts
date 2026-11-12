@@ -11,9 +11,12 @@ import {
   Post,
   Put,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { LOGO_UPLOAD_LIMITS } from './logo-image';
+import { LogoWriteThrottleGuard } from './logo-throttle.guard';
 import {
   addDomainSchema,
   changeTenantStatusSchema,
@@ -149,7 +152,8 @@ export class AdminTenantsController {
   }
 
   @Post(':id/logo')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 1024 * 1024, files: 1 } }))
+  @UseGuards(LogoWriteThrottleGuard)
+  @UseInterceptors(FileInterceptor('file', { limits: LOGO_UPLOAD_LIMITS }))
   setLogo(
     @CurrentUser() actor: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -164,9 +168,33 @@ export class AdminTenantsController {
     return this.tenants.setLogo(actor, id, file);
   }
 
+  @UseGuards(LogoWriteThrottleGuard)
   @Delete(':id/logo')
   removeLogo(@CurrentUser() actor: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.tenants.removeLogo(actor, id);
+  }
+
+  @Post(':id/logo/full')
+  @UseGuards(LogoWriteThrottleGuard)
+  @UseInterceptors(FileInterceptor('file', { limits: LOGO_UPLOAD_LIMITS }))
+  setFullLogo(
+    @CurrentUser() actor: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: { buffer: Buffer; size: number } | undefined,
+  ) {
+    if (!file) {
+      throw new BadRequestException({
+        message: 'No file was received.',
+        fieldErrors: { file: 'Choose an image to upload.' },
+      });
+    }
+    return this.tenants.setLogo(actor, id, file, 'full');
+  }
+
+  @UseGuards(LogoWriteThrottleGuard)
+  @Delete(':id/logo/full')
+  removeFullLogo(@CurrentUser() actor: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.tenants.removeLogo(actor, id, 'full');
   }
 
   @Post(':id/domains')

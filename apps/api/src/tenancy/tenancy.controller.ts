@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Query,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type { AuthUser, Entitlements, HostContext, LegalDocsView, MySubscriptionView } from '@crm/shared';
@@ -13,6 +14,7 @@ import { CurrentUser, Public, Roles, Site } from '../auth/auth.guard';
 import { EntitlementsService } from './entitlements.service';
 import { TenantResolver, normalizeHost, tenancyConfig, tenantOf, toBranding, type ResolvedHost } from './tenant-resolver.service';
 import { TenantsService } from './tenants.service';
+import { PublicImageThrottleGuard } from './logo-throttle.guard';
 import { PlatformSettingsService } from './platform-settings.service';
 import { SubscriptionsService } from './subscriptions.service';
 
@@ -84,21 +86,40 @@ export class TenancyController {
   }
 
   @Public()
+  @UseGuards(PublicImageThrottleGuard)
   @Get('logo/:tenantId')
   async logo(
     @Param('tenantId', ParseUUIDPipe) tenantId: string,
+    @Query('v') v: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const { stream, mimeType } = await this.tenants.logo(tenantId);
-    res.setHeader('Content-Type', mimeType);
-    // Public branding, cache-busted by the ?v= on the URL when it changes.
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    stream.on('error', () => {
-      if (!res.headersSent) res.status(404).end();
-      else res.end();
-    });
-    stream.pipe(res);
+    const { data, mimeType } = await this.tenants.logo(tenantId, 'icon');
+    sendImage(res, data, mimeType, v);
+  }
+
+  /** The wide logo, mark and name together. */
+  @Public()
+  @UseGuards(PublicImageThrottleGuard)
+  @Get('logo/:tenantId/full')
+  async fullLogo(
+    @Param('tenantId', ParseUUIDPipe) tenantId: string,
+    @Query('v') v: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { data, mimeType } = await this.tenants.logo(tenantId, 'full');
+    sendImage(res, data, mimeType, v);
+  }
+
+  /** The icon on white at 180 px: what an iPhone shows for a home-screen shortcut. */
+  @Public()
+  @UseGuards(PublicImageThrottleGuard)
+  @Get('logo/:tenantId/apple')
+  async touchIcon(
+    @Param('tenantId', ParseUUIDPipe) tenantId: string,
+    @Query('v') v: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    sendImage(res, await this.tenants.touchIcon(tenantId), 'image/png', v);
   }
 
   /**
@@ -118,4 +139,27 @@ export class TenancyController {
     if (site.kind === 'unknown') throw new NotFoundException();
     return { ok: true };
   }
+}
+
+/**
+ * Logo URLs carry ?v=, which changes with every upload: those can be cached
+ * for good. A bare URL might be pasted somewhere and outlive a new upload, so
+ * it is only cached for a day.
+ */
+function logoCacheControl(v: string | undefined): string {
+  return v ? 'public, max-age=31536000, immutable' : 'public, max-age=86400';
+}
+
+/**
+ * A logo file, with headers that keep it an image: its own type, never
+ * sniffed into anything else, and no script or framing even if opened alone.
+ */
+function sendImage(res: Response, data: Buffer, mimeType: string, v: string | undefined): void {
+  res.setHeader('Content-Type', mimeType);
+  res.setHeader('Content-Length', String(data.length));
+  res.setHeader('Cache-Control', logoCacheControl(v));
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  res.end(data);
 }

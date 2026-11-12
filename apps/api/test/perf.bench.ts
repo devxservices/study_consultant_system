@@ -268,6 +268,9 @@ async function main() {
     ['auth: who am I', 'manager', '/auth/me'],
     ['clients: list (25)', 'manager', '/clients?pageSize=25'],
     ['clients: search', 'manager', '/clients?pageSize=25&q=khan'],
+    ['clients: sort stalest', 'manager', '/clients?pageSize=25&sort=stalest'],
+    ['clients: sort stage', 'manager', '/clients?pageSize=25&sort=stage'],
+    ['drive: students', 'manager', '/drive/students?pageSize=25'],
     ['clients: one', 'manager', `/clients/${withLogin.id}`],
     ['cases: one', 'manager', `/cases/${caseId}`],
     ['documents: review queue', 'manager', '/documents?status=pending&pageSize=100&sort=oldest'],
@@ -296,6 +299,11 @@ async function main() {
     ['tasks: open', 'manager', '/tasks?view=open&pageSize=25'],
     ['tasks: counts', 'manager', '/tasks/counts?scope=all'],
     ['tenancy: current', 'manager', '/tenancy/current'],
+    // What every page's menu asks for, as well as the page itself.
+    ['menu: plan usage', 'manager', '/tenancy/entitlements'],
+    ['menu: stuck badge', 'manager', '/analytics/stuck?pageSize=1'],
+    ['menu: consultant tasks', 'consultant', '/tasks/counts'],
+    ['menu: consultant unread', 'consultant', '/messages/unread'],
     ['consultant: clients', 'consultant', '/clients?pageSize=25'],
     ['consultant: kpis', 'consultant', '/analytics/kpis'],
     ['consultant: review queue', 'consultant', '/documents?status=pending&pageSize=100&sort=oldest'],
@@ -325,14 +333,32 @@ async function main() {
   const total = results.reduce((a, r) => ({ ms: a.ms + r.medianMs, q: a.q + r.queries }), { ms: 0, q: 0 });
   console.log(`\nsum of medians ${round(total.ms)} ms, sum of queries ${round(total.q)}; rss ${Math.round(mem.rss / 1e6)} MB, heap ${Math.round(mem.heapUsed / 1e6)} MB`);
 
+  // What the cached figures cost to compute: paid once on a first visit, and
+  // after a change by a cheap figure in-line or a dear one in the background.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { DB } = require('../src/db/database.module') as typeof import('../src/db/database.module');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { sql } = require('drizzle-orm') as typeof import('drizzle-orm');
+  const db = app.get(DB) as { execute(q: unknown): Promise<{ rows: { key: string; compute_ms: number }[] }> };
+  try {
+    const computed = await db.execute(sql`select key, compute_ms from stats_cache order by compute_ms desc`);
+    console.log('\ncached figures, compute ms (a first visit, or a refresh after a change):');
+    for (const r of computed.rows) console.log(`  ${r.key.padEnd(48)} ${String(r.compute_ms).padStart(7)}`);
+  } catch {
+    // A build from before the stats cache (migration 0017): nothing to report.
+  }
+
   if (process.env.BENCH_OUT) {
     fs.writeFileSync(
-      process.env.BENCH_OUT,
+      // Relative to where the command was typed, not to the workspace npm runs it in.
+      path.resolve(process.env.INIT_CWD ?? process.cwd(), process.env.BENCH_OUT),
       JSON.stringify({ scale: SCALE, runs: RUNS, counts, results, rssMb: Math.round(mem.rss / 1e6), heapMb: Math.round(mem.heapUsed / 1e6) }, null, 2),
     );
   }
   await app.close();
-  fs.rmSync(workDir, { recursive: true, force: true });
+  // BENCH_KEEP=1 leaves the scaled database for a closer look (EXPLAIN).
+  if (process.env.BENCH_KEEP === '1') console.log(`\nkept the database: PGLITE_DIR=${process.env.PGLITE_DIR}`);
+  else fs.rmSync(workDir, { recursive: true, force: true });
 }
 
 main().catch((e) => {

@@ -24,7 +24,8 @@ import { bills, clients, expenses, ledgerAccounts, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
 import { staffCan } from '../auth/permissions';
-import { iso, page, today, withDocumentNumber } from '../common/db-helpers';
+import { iso, today, withDocumentNumber } from '../common/db-helpers';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { STORAGE, type StorageDriver } from '../storage/storage.driver';
 import { DocumentsService } from '../documents/documents.service';
 import { assertMoneyAccount, liveEntryFor, postEntry, reverseEntry, type PostLine } from './journal';
@@ -67,20 +68,20 @@ export class SpendingService {
 
   async expenses(actor: AuthUser, q: { from?: string; to?: string; accountId?: string; q?: string; page?: number }): Promise<Paginated<ExpenseView>> {
     this.assertCan(actor);
-    const pageNo = Math.max(1, q.page ?? 1);
     const size = 30;
+    const pageNo = clampPage(q.page ?? 1, size);
     const conds: (SQL | undefined)[] = [eq(expenses.tenantId, tenantOf(actor))];
     if (q.from) conds.push(gte(expenses.spentOn, q.from));
     if (q.to) conds.push(lte(expenses.spentOn, q.to));
     if (q.accountId) conds.push(eq(expenses.accountId, q.accountId));
     if (q.q) conds.push(or(ilike(expenses.vendor, `%${q.q}%`), ilike(expenses.description, `%${q.q}%`), ilike(expenses.number, `%${q.q}%`)));
     const where = and(...conds);
-    const [[count], ids] = await Promise.all([
-      this.db.select({ n: sql<number>`count(*)::int` }).from(expenses).where(where),
+    const [count, ids] = await Promise.all([
+      countCapped(this.db, this.db.select({ one: sql`1` }).from(expenses).where(where)),
       this.db.select({ id: expenses.id }).from(expenses).where(where).orderBy(desc(expenses.spentOn), desc(expenses.number)).limit(size).offset((pageNo - 1) * size),
     ]);
     const items = await this.expenseRows(ids.map((i) => i.id));
-    return page(items, count?.n ?? 0, pageNo, size);
+    return paged(items, pageNo, size, count);
   }
 
   private async expenseRows(ids: string[]): Promise<ExpenseView[]> {

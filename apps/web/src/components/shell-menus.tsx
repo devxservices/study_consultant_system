@@ -43,8 +43,8 @@ export function AccountMenu({
         <button
           {...props}
           className={cx(
-            'press flex h-10 items-center gap-2 rounded-lg bg-paper pl-1 pr-1 shadow-tile sm:pr-2.5',
-            open ? 'ring-2 ring-brand-200' : 'hover:bg-ink-50',
+            'press flex h-10 items-center gap-2 rounded-full bg-ink-50 pl-1 pr-1 sm:pr-3',
+            open ? 'ring-2 ring-brand-200' : 'hover:bg-ink-100',
           )}
         >
           <Avatar name={name} size={32} />
@@ -118,8 +118,8 @@ export function QuickCreate({ actions }: { actions: QuickAction[] }) {
         <button
           {...props}
           className={cx(
-            'press flex h-10 items-center gap-2 rounded-lg px-3 text-[13.5px] font-medium shadow-tile',
-            open ? 'bg-brand-600 text-white brightness-[0.86]' : 'bg-brand-600 text-white hover:brightness-[0.93]',
+            'press flex h-10 items-center gap-2 rounded-full bg-brand-600 px-4 text-[13.5px] font-semibold text-white shadow-[0_8px_18px_-10px_var(--color-brand-600)]',
+            open ? 'brightness-[0.88]' : 'hover:brightness-[0.95]',
           )}
         >
           <IconPlus size={18} className={cx('transition-transform duration-200', open && 'rotate-45')} />
@@ -140,7 +140,7 @@ export function QuickCreate({ actions }: { actions: QuickAction[] }) {
                 href={a.href}
                 className="press group flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-ink-50"
               >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 transition-transform duration-200 group-hover:scale-105">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 transition-transform duration-200 group-hover:scale-105">
                   <Glyph size={18} />
                 </span>
                 <span className="min-w-0">
@@ -223,8 +223,8 @@ export function MessagesFab({ href, unread }: { href: string; unread: number }) 
       <span className="pointer-events-none mr-3 translate-x-2 rounded-lg bg-ink-950 px-2.5 py-1.5 text-[12.5px] font-medium text-paper opacity-0 shadow-pop transition-[opacity,transform] duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100">
         Messages
       </span>
-      {/* Brand blue, not the reference's amber: amber means "waiting on
-          someone" everywhere else in this product. */}
+      {/* The brand colour, never amber: amber means "waiting on someone"
+          everywhere else in this product. */}
       <span className="press relative flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-[0_12px_26px_-10px_var(--color-brand-600)] transition-transform duration-200 group-hover:-translate-y-0.5 group-active:scale-95">
         <IconChat size={24} />
         {unread > 0 && (

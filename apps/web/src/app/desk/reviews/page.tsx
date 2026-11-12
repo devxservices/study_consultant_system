@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { DocumentView, Paginated } from '@crm/shared';
+import { formatTotal, type DocumentView, type Paginated } from '@crm/shared';
 import { apiFetch } from '@/lib/api';
 import { requireRole } from '@/lib/session';
 import { can } from '@/lib/permissions';
@@ -57,7 +57,7 @@ export default async function ReviewQueuePage() {
     <>
       <PageHeader
         title="To review"
-        subtitle={`${pending.total} document${pending.total === 1 ? '' : 's'} waiting across ${groups.size} client${groups.size === 1 ? '' : 's'}.`}
+        subtitle={`${formatTotal(pending)} document${pending.total === 1 ? '' : 's'} waiting across ${groups.size} client${groups.size === 1 ? '' : 's'}.`}
       />
 
       {oldestDays >= 3 && (

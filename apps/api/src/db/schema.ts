@@ -20,6 +20,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -97,8 +98,13 @@ export const tenants = pgTable(
     statusChangedAt: timestamp('status_changed_at', { withTimezone: true }),
     /** Hex, e.g. #1e88e5. Null keeps the platform's default palette. */
     primaryColor: text('primary_color'),
-    /** Storage key of the uploaded logo. Logos are public, unlike documents. */
+    /**
+     * Storage key of the square icon: the browser tab, the collapsed menu and
+     * anywhere small. Logos are public, unlike documents.
+     */
     logoKey: text('logo_key'),
+    /** Storage key of the wide logo - mark and name together - for the expanded menu and the sign-in page. */
+    fullLogoKey: text('full_logo_key'),
     contactEmail: text('contact_email'),
     contactPhone: text('contact_phone'),
     /** Null: no plan assigned, which keeps every module on (the pre-plans behaviour). */
@@ -473,9 +479,16 @@ export const clients = pgTable(
     index('clients_consultant_idx').on(t.assignedConsultantId, t.archived),
     index('clients_email_idx').on(sql`lower(${t.email})`),
     index('clients_name_idx').on(sql`lower(${t.fullName})`),
-    index('clients_created_at_idx').on(t.createdAt.desc()),
-    index('clients_tenant_created_idx').on(t.tenantId, t.createdAt.desc()),
+    index('clients_created_at_idx').on(t.createdAt.desc().nullsFirst()),
+    index('clients_tenant_created_idx').on(t.tenantId, t.createdAt.desc().nullsFirst()),
     index('clients_tenant_consultant_idx').on(t.tenantId, t.assignedConsultantId),
+    // Search is "contains", which a b-tree cannot answer: trigram indexes
+    // (pg_trgm) serve ILIKE '%term%' from the index for terms of three
+    // characters or more, so finding one client among millions does not read
+    // them all.
+    index('clients_name_trgm_idx').using('gin', t.fullName.op('gin_trgm_ops')),
+    index('clients_email_trgm_idx').using('gin', t.email.op('gin_trgm_ops')),
+    index('clients_phone_trgm_idx').using('gin', t.phone.op('gin_trgm_ops')),
   ],
 );
 
@@ -538,6 +551,20 @@ export const cases = pgTable(
     /** Any activity at all: upload, review, message, note. */
     lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
     closedAt: timestamp('closed_at', { withTimezone: true }),
+    /**
+     * When the case counts as stuck if it has not moved: the stage's limit
+     * after it entered the stage. Kept by a trigger (`cases_set_stuck_at`) on
+     * every write, from the same limits as `STAGE_DEFINITIONS`
+     * (`analytics/stuck-thresholds.ts`), so "is it stuck?" is
+     * `stuck_at < now()` - an index range, not a sum over every case.
+     */
+    stuckAt: timestamp('stuck_at', { withTimezone: true }),
+    /**
+     * The newest message in the case's conversation, kept by a trigger on
+     * `messages` (`messages_touch_case`). The inbox walks cases by it, so it
+     * reads the 50 newest threads instead of ranking every conversation.
+     */
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -549,8 +576,23 @@ export const cases = pgTable(
     index('cases_consultant_stage_idx').on(t.consultantId, t.currentStage),
     index('cases_stage_idx').on(t.currentStage, t.status),
     index('cases_stage_entered_idx').on(t.stageEnteredAt),
-    index('cases_last_activity_idx').on(t.lastActivityAt.desc()),
+    index('cases_last_activity_idx').on(t.lastActivityAt.desc().nullsFirst()),
     index('cases_workflow_stage_idx').on(t.workflowVersionId, t.currentStageKey),
+    // Live cases by when they stall: the "Not moving" list worst-first, and
+    // its badge, for the consultancy and for one consultant.
+    index('cases_tenant_stuck_idx')
+      .on(t.tenantId, t.stuckAt)
+      .where(sql`status = 'active' AND current_stage <> 'closed'`),
+    index('cases_consultant_stuck_idx')
+      .on(t.consultantId, t.stuckAt)
+      .where(sql`status = 'active' AND current_stage <> 'closed'`),
+    // The inbox: conversations newest first.
+    index('cases_tenant_last_message_idx')
+      .on(t.tenantId, t.lastMessageAt.desc().nullsFirst())
+      .where(sql`last_message_at IS NOT NULL`),
+    index('cases_consultant_last_message_idx')
+      .on(t.consultantId, t.lastMessageAt.desc().nullsFirst())
+      .where(sql`last_message_at IS NOT NULL`),
   ],
 );
 
@@ -579,7 +621,7 @@ export const caseStageEvents = pgTable(
     note: text('note'),
   },
   (t) => [
-    index('stage_events_case_idx').on(t.caseId, t.enteredAt.desc()),
+    index('stage_events_case_idx').on(t.caseId, t.enteredAt.desc().nullsFirst()),
     index('stage_events_open_idx').on(t.caseId).where(sql`completed_at IS NULL`),
   ],
 );
@@ -690,7 +732,7 @@ export const documents = pgTable(
       .where(sql`expires_on IS NOT NULL AND deleted_at IS NULL AND trashed_at IS NULL`),
     index('documents_version_group_idx').on(t.versionGroup),
     index('documents_client_checksum_idx').on(t.clientId, t.checksum),
-    index('documents_tenant_uploaded_idx').on(t.tenantId, t.uploadedAt.desc()),
+    index('documents_tenant_uploaded_idx').on(t.tenantId, t.uploadedAt.desc().nullsFirst()),
   ],
 );
 
@@ -797,7 +839,7 @@ export const shareLinks = pgTable(
     uniqueIndex('share_links_token_key').on(t.tokenHash),
     index('share_links_document_idx').on(t.documentId),
     index('share_links_folder_idx').on(t.folderId),
-    index('share_links_tenant_idx').on(t.tenantId, t.createdAt.desc()),
+    index('share_links_tenant_idx').on(t.tenantId, t.createdAt.desc().nullsFirst()),
   ],
 );
 
@@ -816,7 +858,7 @@ export const shareAccessLog = pgTable(
     userAgent: text('user_agent'),
     at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('share_access_log_link_idx').on(t.shareLinkId, t.at.desc())],
+  (t) => [index('share_access_log_link_idx').on(t.shareLinkId, t.at.desc().nullsFirst())],
 );
 
 /**
@@ -921,8 +963,11 @@ export const messages = pgTable(
     readAt: timestamp('read_at', { withTimezone: true }),
   },
   (t) => [
-    index('messages_case_idx').on(t.caseId, t.sentAt.desc()),
+    index('messages_case_idx').on(t.caseId, t.sentAt.desc().nullsFirst()),
     index('messages_unread_idx').on(t.caseId).where(sql`read_at IS NULL`),
+    // The unread badge: a consultancy's unread messages, without visiting
+    // every case to find them.
+    index('messages_tenant_unread_idx').on(t.tenantId, t.caseId).where(sql`read_at IS NULL`),
   ],
 );
 
@@ -949,7 +994,7 @@ export const notifications = pgTable(
     createdAt: createdAt(),
   },
   (t) => [
-    index('notifications_user_idx').on(t.userId, t.createdAt.desc()),
+    index('notifications_user_idx').on(t.userId, t.createdAt.desc().nullsFirst()),
     index('notifications_unread_idx').on(t.userId).where(sql`read_at IS NULL`),
   ],
 );
@@ -983,12 +1028,12 @@ export const auditLog = pgTable(
     createdAt: createdAt(),
   },
   (t) => [
-    index('audit_tenant_actor_idx').on(t.tenantId, t.actorId, t.createdAt.desc()),
-    index('audit_case_idx').on(t.caseId, t.createdAt.desc()),
-    index('audit_client_idx').on(t.clientId, t.createdAt.desc()),
-    index('audit_actor_idx').on(t.actorId, t.createdAt.desc()),
+    index('audit_tenant_actor_idx').on(t.tenantId, t.actorId, t.createdAt.desc().nullsFirst()),
+    index('audit_case_idx').on(t.caseId, t.createdAt.desc().nullsFirst()),
+    index('audit_client_idx').on(t.clientId, t.createdAt.desc().nullsFirst()),
+    index('audit_actor_idx').on(t.actorId, t.createdAt.desc().nullsFirst()),
     index('audit_entity_idx').on(t.entityType, t.entityId),
-    index('audit_tenant_created_idx').on(t.tenantId, t.createdAt.desc()),
+    index('audit_tenant_created_idx').on(t.tenantId, t.createdAt.desc().nullsFirst()),
   ],
 );
 
@@ -1006,6 +1051,33 @@ export const tenantSync = pgTable('tenant_sync', {
     .references(() => tenants.id, { onDelete: 'cascade' }),
   changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Figures that summarise a whole consultancy - dashboard totals, menu badges,
+ * plan usage - kept between requests (`stats/stats-cache.service.ts`).
+ * Computing one means reading every case or client, which grows with the
+ * consultancy; reading it back is one primary-key lookup. Each row remembers
+ * the consultancy's change marker (`tenant_sync`) it was computed against, so
+ * a figure is only recomputed after something changed, and how long that
+ * took, so cheap figures are refreshed at once and dear ones in the
+ * background. Shared by every API instance and kept across restarts.
+ */
+export const statsCache = pgTable(
+  'stats_cache',
+  {
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    /** What and for whom, e.g. `kpis:all` or `tasks:c:<consultant>:u:<user>`. */
+    key: text('key').notNull(),
+    value: jsonb('value').notNull(),
+    computedAt: timestamp('computed_at', { withTimezone: true }).notNull().defaultNow(),
+    /** The consultancy's change marker when the computation started. */
+    markerAt: timestamp('marker_at', { withTimezone: true }),
+    computeMs: integer('compute_ms').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.key] })],
+);
 
 /* ------------------------------------------------------------------ */
 /* Billing                                                             */
@@ -1080,6 +1152,9 @@ export const invoices = pgTable(
     index('invoices_tenant_client_idx').on(t.tenantId, t.clientId),
     index('invoices_tenant_status_due_idx').on(t.tenantId, t.status, t.dueDate),
     index('invoices_parent_idx').on(t.parentInvoiceId),
+    // The invoice list's own order, newest first: the first page is the first
+    // 25 entries of this index instead of a sort of every invoice.
+    index('invoices_tenant_issued_idx').on(t.tenantId, t.issueDate.desc().nullsFirst(), t.number.desc().nullsFirst()),
   ],
 );
 
@@ -2694,7 +2769,7 @@ export const announcements = pgTable(
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: createdAt(),
   },
-  (t) => [index('announcements_tenant_created_idx').on(t.tenantId, t.createdAt.desc())],
+  (t) => [index('announcements_tenant_created_idx').on(t.tenantId, t.createdAt.desc().nullsFirst())],
 );
 
 /* ------------------------------------------------------------------ */
@@ -2865,8 +2940,8 @@ export const automationRuns = pgTable(
     createdAt: createdAt(),
   },
   (t) => [
-    index('automation_runs_tenant_created_idx').on(t.tenantId, t.createdAt.desc()),
-    index('automation_runs_rule_idx').on(t.ruleId, t.createdAt.desc()),
+    index('automation_runs_tenant_created_idx').on(t.tenantId, t.createdAt.desc().nullsFirst()),
+    index('automation_runs_rule_idx').on(t.ruleId, t.createdAt.desc().nullsFirst()),
     uniqueIndex('automation_runs_event_key').on(t.tenantId, t.eventKey).where(sql`event_key is not null`),
   ],
 );

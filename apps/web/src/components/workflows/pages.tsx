@@ -22,7 +22,7 @@ import { can } from '@/lib/permissions';
 import { formatDate, relativeDays } from '@/lib/format';
 import { ActionButton } from '../forms';
 import { NoAccess } from '../no-access';
-import { Card, EmptyState, LinkButton, PageHeader, Pill, cx } from '../ui';
+import { Card, EmptyState, LinkButton, PageHeader, Pill, TAB_BAR, cx, tabClass } from '../ui';
 import { IconPlus } from '../icons';
 import { AutomationEditor, type WorkflowStagesOption } from './automation-editor';
 import { Board } from './board';
@@ -56,16 +56,13 @@ function Tabs({ base, active, build }: { base: Base; active: 'workflows' | 'auto
     { key: 'countries', label: 'Countries', href: `${base}/countries` },
   ];
   return (
-    <nav className="-mb-px mb-5 flex gap-1 overflow-x-auto border-b border-line" aria-label="Workflows">
+    <nav className={cx(TAB_BAR, 'mb-5 pb-1')} aria-label="Workflows">
       {tabs.map((t) => (
         <Link
           key={t.key}
           href={t.href}
           aria-current={active === t.key ? 'page' : undefined}
-          className={cx(
-            'whitespace-nowrap border-b-2 px-3 pb-2.5 pt-1 text-[13.5px] font-medium',
-            active === t.key ? 'border-brand-600 text-ink-950' : 'border-transparent text-ink-500 hover:text-ink-800',
-          )}
+          className={tabClass(active === t.key)}
         >
           {t.label}
         </Link>
@@ -202,16 +199,13 @@ export async function WorkflowDetailPage({
           </LinkButton>
         }
       />
-      <nav className="-mb-px mb-5 flex gap-1 overflow-x-auto border-b border-line" aria-label="Workflow">
+      <nav className={cx(TAB_BAR, 'mb-5 pb-1')} aria-label="Workflow">
         {tabs.map((t) => (
           <Link
             key={t.key}
             href={`${base}/workflows/${id}${t.key === 'stages' ? '' : `?tab=${t.key}`}`}
             aria-current={tab === t.key ? 'page' : undefined}
-            className={cx(
-              'whitespace-nowrap border-b-2 px-3 pb-2.5 pt-1 text-[13.5px] font-medium',
-              tab === t.key ? 'border-brand-600 text-ink-950' : 'border-transparent text-ink-500 hover:text-ink-800',
-            )}
+            className={tabClass(tab === t.key)}
           >
             {t.label}
           </Link>

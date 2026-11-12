@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, isNull, ne, or, sql, type SQL, type SQLWrapper } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, ne, or, sql, type SQL, type SQLWrapper } from 'drizzle-orm';
 import {
   localIsoDateIn,
   STAGE_DEFINITIONS,
@@ -13,38 +13,30 @@ import type { Db } from '../db/connection';
 import { auditLog, cases, clients, consultants, documents, users } from '../db/schema';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
 import { AUDIT_CATEGORIES } from '@crm/shared';
+import { StatsCacheService } from '../stats/stats-cache.service';
+import { clampPage, countCapped, paged } from '../common/paging';
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * "Has this case stopped moving?" expressed in SQL.
  *
  * The per-stage thresholds live in @crm/shared so the API, the client's
- * progress view and the manager's alerts all agree on what "stuck" means.
- * This builds a CASE expression from that same config rather than hard-coding
- * a single global number, because two weeks in Documents Collection is normal
- * and two weeks waiting on an offer letter is not.
+ * progress view and the manager's alerts all agree on what "stuck" means:
+ * two weeks in Documents Collection is normal, two weeks waiting on an offer
+ * letter is not. A workflow sets its own limit per stage, copied onto the
+ * application as it enters the stage (stage_sla_days); the built-in numbers
+ * are the fallback, and are what the Standard workflow uses.
  *
- * A workflow sets its own limit per stage, copied onto the application as
- * it enters the stage (stage_sla_days); the built-in numbers are the
- * fallback, and are what the Standard workflow uses.
- *
- * The interpolated values are integers from our own constants, never user
- * input.
+ * The moment a case passes its limit is stored on it as `stuck_at` (see
+ * stuck-thresholds.ts), so the test is a comparison an index can answer.
  */
-function stuckThresholdSql(): SQL {
-  const branches = STAGE_ORDER.map(
-    (s) => `when '${s}' then interval '${STAGE_DEFINITIONS[s].stuckAfterDays} days'`,
-  ).join(' ');
-  return sql.raw(`coalesce(${cases.stageSlaDays.name} * interval '1 day', (case ${cases.currentStage.name} ${branches} end))`);
-}
-
-const isStuckSql = (): SQL =>
-  sql`${cases.stageEnteredAt} < now() - ${stuckThresholdSql()}`;
+const isStuckSql = (): SQL => sql`${cases.stuckAt} < now()`;
 
 /** Whole days past the point this stage should have cleared. */
 const daysOverdueSql = (): SQL<number> =>
-  sql<number>`greatest(0, extract(day from (now() - ${cases.stageEnteredAt} - ${stuckThresholdSql()})))::int`;
+  sql<number>`greatest(0, extract(day from (now() - ${cases.stuckAt})))::int`;
 
 export interface FunnelStage {
   stage: Stage;
@@ -176,7 +168,30 @@ export interface StuckCase {
 
 @Injectable()
 export class AnalyticsService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    private readonly stats: StatsCacheService,
+  ) {}
+
+  /**
+   * The cache key of a scope: names exactly the rows `scope()` and
+   * `clientScope()` select, so two callers share a figure only when they
+   * would have computed the same one. A manager narrowed to a consultant and
+   * that consultant see the same rows. Anyone else is computed live.
+   */
+  private scopeKey(actor: AuthUser, consultantId?: string): string | null {
+    if (actor.role === 'consultant') return `c:${actor.consultantId ?? NIL_UUID}`;
+    if (actor.role === 'manager' && consultantId) return UUID_RE.test(consultantId) ? `c:${consultantId.toLowerCase()}` : null;
+    if (actor.role === 'manager') return 'all';
+    return null;
+  }
+
+  /** A whole-scope figure, through the stats cache (stats/stats-cache.service.ts). */
+  private cached<T>(actor: AuthUser, name: string, consultantId: string | undefined, compute: () => Promise<T>): Promise<T> {
+    const scope = this.scopeKey(actor, consultantId);
+    if (!scope || !actor.tenantId) return compute();
+    return this.stats.get(tenantOf(actor), `${name}:${scope}`, compute);
+  }
 
   /**
    * Consultants see their own numbers; managers see their whole consultancy,
@@ -213,7 +228,11 @@ export class AnalyticsService {
   }
 
   /** How many live cases sit at each stage, and how many of those have stalled. */
-  async funnel(actor: AuthUser, consultantId?: string): Promise<FunnelResponse> {
+  funnel(actor: AuthUser, consultantId?: string): Promise<FunnelResponse> {
+    return this.cached(actor, 'funnel', consultantId, () => this.computeFunnel(actor, consultantId));
+  }
+
+  private async computeFunnel(actor: AuthUser, consultantId?: string): Promise<FunnelResponse> {
     const scope = this.scope(actor, consultantId);
 
     // One pass over the cases in scope, grouped by status and stage: the live
@@ -255,7 +274,11 @@ export class AnalyticsService {
     };
   }
 
-  /** Cases past their stage's threshold, worst first. */
+  /**
+   * Cases past their stage's threshold, worst first. Read in `stuck_at`
+   * order from the partial index of live cases, so a page - and the menu's
+   * badge, which asks for one row and the count - costs the same at any size.
+   */
   async stuckCases(
     actor: AuthUser,
     opts: { page: number; pageSize: number; consultantId?: string },
@@ -266,11 +289,7 @@ export class AnalyticsService {
       isStuckSql(),
       this.scope(actor, opts.consultantId),
     );
-
-    const countQuery = this.db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(cases)
-      .where(where);
+    const page = clampPage(opts.page, opts.pageSize);
 
     const pendingDocsSql = sql<number>`(
       select count(*)::int from documents d
@@ -278,7 +297,7 @@ export class AnalyticsService {
         and d.status in ('pending', 'under_review') and d.deleted_at is null and d.trashed_at is null and d.superseded_by is null
     )`;
 
-    const [[totalRow], rows] = await Promise.all([countQuery, this.db
+    const [count, rows] = await Promise.all([countCapped(this.db, this.db.select({ one: sql`1` }).from(cases).where(where)), this.db
       .select({
         id: cases.id,
         reference: cases.reference,
@@ -299,13 +318,13 @@ export class AnalyticsService {
       .leftJoin(consultants, eq(consultants.id, cases.consultantId))
       .leftJoin(users, eq(users.id, consultants.userId))
       .where(where)
-      .orderBy(desc(daysOverdueSql()))
+      // Longest past its limit first: the earliest stuck_at.
+      .orderBy(asc(cases.stuckAt), asc(cases.id))
       .limit(opts.pageSize)
-      .offset((opts.page - 1) * opts.pageSize)]);
-    const total = totalRow?.n ?? 0;
+      .offset((page - 1) * opts.pageSize)]);
 
-    return {
-      items: rows.map((r) => ({
+    return paged(
+      rows.map((r) => ({
         ...r,
         currentStage: r.currentStage as Stage,
         stageEnteredAt: iso(r.stageEnteredAt),
@@ -313,11 +332,10 @@ export class AnalyticsService {
         daysOverdue: r.daysOverdue ?? 0,
         pendingDocuments: r.pendingDocuments ?? 0,
       })),
-      page: opts.page,
-      pageSize: opts.pageSize,
-      total,
-      totalPages: Math.max(1, Math.ceil(total / opts.pageSize)),
-    };
+      page,
+      opts.pageSize,
+      count,
+    );
   }
 
   /**
@@ -375,15 +393,19 @@ export class AnalyticsService {
       );
     }
     const where = and(...conditions.filter(Boolean));
+    const page = clampPage(opts.page, opts.pageSize);
 
-    const countQuery = this.db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(auditLog)
-      .leftJoin(users, eq(users.id, auditLog.actorId))
-      .leftJoin(clients, eq(clients.id, auditLog.clientId))
-      .where(where);
+    const countQuery = countCapped(
+      this.db,
+      this.db
+        .select({ one: sql`1` })
+        .from(auditLog)
+        .leftJoin(users, eq(users.id, auditLog.actorId))
+        .leftJoin(clients, eq(clients.id, auditLog.clientId))
+        .where(where),
+    );
 
-    const [[totalRow], rows] = await Promise.all([countQuery, this.db
+    const [count, rows] = await Promise.all([countQuery, this.db
       .select({
         id: auditLog.id,
         action: auditLog.action,
@@ -406,16 +428,14 @@ export class AnalyticsService {
       .where(where)
       .orderBy(desc(auditLog.createdAt))
       .limit(opts.pageSize)
-      .offset((opts.page - 1) * opts.pageSize)]);
+      .offset((page - 1) * opts.pageSize)]);
 
-    const total = totalRow?.n ?? 0;
-    return {
-      items: rows.map((r) => ({ ...r, createdAt: iso(r.createdAt) })),
-      page: opts.page,
-      pageSize: opts.pageSize,
-      total,
-      totalPages: Math.max(1, Math.ceil(total / opts.pageSize)),
-    };
+    return paged(
+      rows.map((r) => ({ ...r, createdAt: iso(r.createdAt) })),
+      page,
+      opts.pageSize,
+      count,
+    );
   }
 
   /**
@@ -426,9 +446,13 @@ export class AnalyticsService {
    * different things. Every month in the window is emitted even when it is
    * empty, so the axis does not stretch and squash between loads.
    */
-  async trends(actor: AuthUser, months: number, consultantId?: string): Promise<TrendsResponse> {
+  trends(actor: AuthUser, months: number, consultantId?: string): Promise<TrendsResponse> {
+    const span = Math.min(24, Math.max(3, Number.isFinite(months) ? Math.trunc(months) : 6));
+    return this.cached(actor, `trends:${span}`, consultantId, () => this.computeTrends(actor, span, consultantId));
+  }
+
+  private async computeTrends(actor: AuthUser, span: number, consultantId?: string): Promise<TrendsResponse> {
     const scope = this.scope(actor, consultantId);
-    const span = Math.min(24, Math.max(3, months));
     const since = startOfMonth(new Date());
     since.setUTCMonth(since.getUTCMonth() - (span - 1));
 
@@ -513,7 +537,11 @@ export class AnalyticsService {
    * is fine. Every active case lands in exactly one bucket, so the parts sum to
    * the whole and a proportional chart is honest.
    */
-  async caseHealth(actor: AuthUser, consultantId?: string): Promise<CaseHealthResponse> {
+  caseHealth(actor: AuthUser, consultantId?: string): Promise<CaseHealthResponse> {
+    return this.cached(actor, 'health', consultantId, () => this.computeCaseHealth(actor, consultantId));
+  }
+
+  private async computeCaseHealth(actor: AuthUser, consultantId?: string): Promise<CaseHealthResponse> {
     const pendingDocs = sql<number>`(
       select count(*)::int from documents d
       where (d.case_id = ${cases.id} or (d.case_id is null and d.client_id = ${cases.clientId}))
@@ -554,7 +582,11 @@ export class AnalyticsService {
    * an arbitrary window would read as a trend the number does not have. They
    * get a plain-language hint instead.
    */
-  async kpis(actor: AuthUser, consultantId?: string): Promise<KpiResponse> {
+  kpis(actor: AuthUser, consultantId?: string): Promise<KpiResponse> {
+    return this.cached(actor, 'kpis', consultantId, () => this.computeKpis(actor, consultantId));
+  }
+
+  private async computeKpis(actor: AuthUser, consultantId?: string): Promise<KpiResponse> {
     const scope = this.scope(actor, consultantId);
     const clientScope = this.clientScope(actor, consultantId);
 
@@ -653,8 +685,12 @@ export class AnalyticsService {
    * passports that will be too close to expiry for a visa. Overdue ones (up to
    * a week past) stay on the list - a missed deadline is the one that matters.
    */
-  async deadlines(actor: AuthUser, days: number): Promise<DeadlineItem[]> {
-    const span = Math.min(120, Math.max(1, days));
+  deadlines(actor: AuthUser, days: number): Promise<DeadlineItem[]> {
+    const span = Math.min(120, Math.max(1, Number.isFinite(days) ? Math.trunc(days) : 30));
+    return this.cached(actor, `deadlines:${span}`, undefined, () => this.computeDeadlines(actor, span));
+  }
+
+  private async computeDeadlines(actor: AuthUser, span: number): Promise<DeadlineItem[]> {
     const from = localIsoDateIn(-7);
     const to = localIsoDateIn(span);
     const live = and(eq(cases.status, 'active'), ne(cases.currentStage, 'closed'), this.scope(actor));
@@ -753,7 +789,11 @@ export class AnalyticsService {
   }
 
   /** Where students are going, and how it turned out. */
-  async destinations(actor: AuthUser): Promise<DestinationRow[]> {
+  destinations(actor: AuthUser): Promise<DestinationRow[]> {
+    return this.cached(actor, 'destinations', undefined, () => this.computeDestinations(actor));
+  }
+
+  private async computeDestinations(actor: AuthUser): Promise<DestinationRow[]> {
     return this.db
       .select({
         country: cases.targetCountry,
@@ -769,7 +809,11 @@ export class AnalyticsService {
   }
 
   /** Live applications per intake, so the September rush is visible in June. */
-  async intakes(actor: AuthUser): Promise<{ intake: string; count: number }[]> {
+  intakes(actor: AuthUser): Promise<{ intake: string; count: number }[]> {
+    return this.cached(actor, 'intakes', undefined, () => this.computeIntakes(actor));
+  }
+
+  private async computeIntakes(actor: AuthUser): Promise<{ intake: string; count: number }[]> {
     const rows = await this.db
       .select({ intake: cases.intake, count: sql<number>`count(*)::int` })
       .from(cases)
@@ -793,7 +837,11 @@ export class AnalyticsService {
   }
 
   /** Where enquiries come from, and how many of each became an approved visa. */
-  async sources(actor: AuthUser): Promise<{ source: string; clients: number; approved: number }[]> {
+  sources(actor: AuthUser): Promise<{ source: string; clients: number; approved: number }[]> {
+    return this.cached(actor, 'sources', undefined, () => this.computeSources(actor));
+  }
+
+  private async computeSources(actor: AuthUser): Promise<{ source: string; clients: number; approved: number }[]> {
     const source = sql<string>`coalesce(${clients.leadSource}, 'unknown')`;
     return this.db
       .select({

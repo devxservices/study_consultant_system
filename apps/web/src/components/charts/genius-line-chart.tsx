@@ -1,6 +1,17 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
 import { cx } from '../ui';
 
 export interface TrendPoint {
@@ -19,6 +30,34 @@ export interface LineSeries {
 }
 
 const PAD = { top: 16, right: 14, bottom: 30, left: 40 };
+
+/* ------------------------------------------------------------------ */
+/* Which series is in focus                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One series is drawn in focus - thick, marked at every point, with a wash
+ * beneath - and the rest recede, as in the reference. The legend's pills pick
+ * which. The choice lives in this small context so a legend in a panel's
+ * header can drive a chart in its body: wrap both in a SeriesFocusProvider.
+ * A chart with no provider above it brings its own.
+ */
+interface SeriesFocus {
+  focus: string | null;
+  setFocus: (key: string) => void;
+}
+
+const SeriesFocusContext = createContext<SeriesFocus | null>(null);
+
+export function SeriesFocusProvider({ children }: { children: ReactNode }) {
+  const [focus, setFocus] = useState<string | null>(null);
+  return <SeriesFocusContext.Provider value={{ focus, setFocus }}>{children}</SeriesFocusContext.Provider>;
+}
+
+/** The series in focus: the one picked, else the first. */
+function focusedKey(series: LineSeries[], focus: string | null): string | undefined {
+  return series.some((s) => s.key === focus) ? (focus as string) : series[0]?.key;
+}
 
 /**
  * Monotone cubic interpolation (Fritsch-Carlson): smooth, but the curve never
@@ -68,28 +107,36 @@ export function monotonePath(pts: { x: number; y: number }[]): string {
  * count of cases, so the scale is honest and the gap between two lines is a
  * real quantity.
  *
- * The first series (the volume one) carries a soft wash to the baseline; the
- * others are lines only, so the fill never becomes the thing you read. Lines
- * draw themselves in once on arrival. A crosshair snaps to the nearest month on
- * hover, touch or the arrow keys and lists every series there - the value
- * leads, the series name follows. The same figures are one click away as a
- * table.
+ * Drawn as the reference draws its chart: a faint dashed grid, the series in
+ * focus thick and marked at every month over a soft wash to the baseline, the
+ * others thin and pale behind it. Lines draw themselves in once on arrival. A
+ * crosshair snaps to the nearest month on hover, touch or the arrow keys and
+ * lists every series there - the value leads, the series name follows. The
+ * same figures are one click away as a table.
  */
-export function GeniusLineChart({
-  points,
-  series,
-  height = 300,
-  area = true,
-  legend = false,
-}: {
+export function GeniusLineChart(props: ChartProps) {
+  const ctx = useContext(SeriesFocusContext);
+  if (ctx) return <LineChart {...props} />;
+  return (
+    <SeriesFocusProvider>
+      <LineChart {...props} />
+    </SeriesFocusProvider>
+  );
+}
+
+interface ChartProps {
   points: TrendPoint[];
   series: LineSeries[];
   height?: number;
-  /** Wash under the first series. */
+  /** Wash under the series in focus. */
   area?: boolean;
   /** Draw the legend above the plot (when the panel header does not carry it). */
   legend?: boolean;
-}) {
+}
+
+function LineChart({ points, series, height = 300, area = true, legend = false }: ChartProps) {
+  const { focus } = useContext(SeriesFocusContext) as SeriesFocus;
+  const lead = focusedKey(series, focus);
   const uid = useId().replace(/:/g, '');
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(720);
@@ -124,13 +171,15 @@ export function GeniusLineChart({
     });
     const ticks = Array.from({ length: topTicks + 1 }, (_, i) => ({ v: step * i, y: y(step * i) }));
     const baseline = y(0);
-    const first = lines[0];
+    const main = lines.find((l) => l.key === lead);
     const fill =
-      first && first.pts.length > 1
-        ? `${first.d} L${first.pts[first.pts.length - 1].x},${baseline} L${first.pts[0].x},${baseline} Z`
+      main && main.pts.length > 1
+        ? `${main.d} L${main.pts[main.pts.length - 1].x},${baseline} L${main.pts[0].x},${baseline} Z`
         : null;
-    return { innerW, innerH, x, y, lines, ticks, baseline, fill };
-  }, [width, height, points, series]);
+    // The series in focus is drawn last, so it sits over the others.
+    const ordered = [...lines.filter((l) => l.key !== lead), ...(main ? [main] : [])];
+    return { innerW, innerH, x, y, lines: ordered, ticks, baseline, fill, main };
+  }, [width, height, points, series, lead]);
 
   if (points.length === 0) {
     return (
@@ -162,7 +211,7 @@ export function GeniusLineChart({
 
   return (
     <div ref={wrapRef} className="relative w-full">
-      {legend && <LineLegend series={series} className="mb-2" />}
+      {legend && <LineLegend series={series} className="mb-3 justify-end" />}
       <svg
         width={width}
         height={height}
@@ -179,15 +228,16 @@ export function GeniusLineChart({
         onBlur={() => setHover(null)}
       >
         <defs>
-          {series[0] && (
+          {geom.main && (
             <linearGradient id={`${uid}-wash`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={series[0].color} stopOpacity="0.22" />
-              <stop offset="100%" stopColor={series[0].color} stopOpacity="0" />
+              <stop offset="0%" stopColor={geom.main.color} stopOpacity="0.26" />
+              <stop offset="100%" stopColor={geom.main.color} stopOpacity="0" />
             </linearGradient>
           )}
         </defs>
 
-        {/* Gridlines recede: solid hairlines in the line token. */}
+        {/* The grid recedes: faint dashed hairlines, across at every step and
+            down at every month, as in the reference. */}
         {geom.ticks.map((t) => (
           <g key={t.v}>
             <line
@@ -195,18 +245,31 @@ export function GeniusLineChart({
               x2={width - PAD.right}
               y1={t.y}
               y2={t.y}
-              stroke="var(--color-line)"
+              stroke="var(--color-line-strong)"
               strokeWidth={1}
+              strokeDasharray="4 5"
             />
             <text
               x={PAD.left - 10}
               y={t.y + 4}
               textAnchor="end"
-              className="tnum fill-ink-400 text-[11px]"
+              className="tnum fill-ink-500 text-[11px]"
             >
               {t.v}
             </text>
           </g>
+        ))}
+        {points.map((p, i) => (
+          <line
+            key={p.period}
+            x1={geom.x(i)}
+            x2={geom.x(i)}
+            y1={PAD.top}
+            y2={geom.baseline}
+            stroke="var(--color-line-strong)"
+            strokeWidth={1}
+            strokeDasharray="4 5"
+          />
         ))}
 
         {points.map((p, i) => (
@@ -217,7 +280,7 @@ export function GeniusLineChart({
             textAnchor="middle"
             className={cx(
               'text-[11px] transition-colors',
-              active === i ? 'fill-ink-800 font-medium' : 'fill-ink-400',
+              active === i ? 'fill-ink-900 font-semibold' : 'fill-ink-500',
             )}
           >
             {p.label}
@@ -238,39 +301,50 @@ export function GeniusLineChart({
           />
         )}
 
-        {geom.lines.map((ln, i) => (
-          <path
-            key={ln.key}
-            d={ln.d}
-            pathLength={1}
-            fill="none"
-            stroke={ln.color}
-            strokeWidth={2.25}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="chart-draw"
-            style={{ animationDelay: `${i * 140}ms` }}
-          />
-        ))}
+        {geom.lines.map((ln, i) => {
+          const main = ln.key === lead;
+          return (
+            <path
+              key={ln.key}
+              d={ln.d}
+              pathLength={1}
+              fill="none"
+              stroke={ln.color}
+              strokeWidth={main ? 3 : 2}
+              strokeOpacity={main ? 1 : 0.45}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="chart-draw transition-[stroke-opacity,stroke-width] duration-200"
+              style={{ animationDelay: `${i * 140}ms` }}
+            />
+          );
+        })}
 
-        {/* Every month's mark, ringed in the card colour so it stays legible
-            where lines cross; the active month's marks grow. */}
-        {geom.lines.map((ln) => (
-          <g key={ln.key} className="chart-fade">
-            {ln.pts.map((pt, i) => (
-              <circle
-                key={i}
-                cx={pt.x}
-                cy={pt.y}
-                r={active === i ? 5.5 : 3.5}
-                fill={ln.color}
-                stroke="var(--color-paper)"
-                strokeWidth={2}
-                className="transition-[r] duration-150"
-              />
-            ))}
-          </g>
-        ))}
+        {/* The series in focus is marked at every month, ringed in the card
+            colour so the marks stay legible where lines cross; the others are
+            marked only at the month under the crosshair. The active month's
+            marks grow. */}
+        {geom.lines.map((ln) => {
+          const main = ln.key === lead;
+          return (
+            <g key={ln.key} className="chart-fade">
+              {ln.pts.map((pt, i) =>
+                main || active === i ? (
+                  <circle
+                    key={i}
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={active === i ? 6.5 : 5}
+                    fill={ln.color}
+                    stroke="var(--color-paper)"
+                    strokeWidth={2.5}
+                    className="transition-[r] duration-150"
+                  />
+                ) : null,
+              )}
+            </g>
+          );
+        })}
       </svg>
 
       {active !== null && (
@@ -387,16 +461,46 @@ export function ChartTable({
   );
 }
 
-/** The legend row: a line key per series, mirroring the marks. */
+/**
+ * The legend, as the reference's row of pills: each series outlined in its
+ * own colour, the one in focus filled. Inside a SeriesFocusProvider each pill
+ * is a toggle that brings its series forward; without one it is a plain key.
+ */
 export function LineLegend({ series, className }: { series: LineSeries[]; className?: string }) {
+  const ctx = useContext(SeriesFocusContext);
+  const lead = focusedKey(series, ctx?.focus ?? null);
   return (
-    <ul className={cx('flex flex-wrap items-center gap-x-4 gap-y-1.5', className)}>
-      {series.map((s) => (
-        <li key={s.key} className="flex items-center gap-1.5 text-[12.5px] text-ink-500">
-          <span className="h-[3px] w-3.5 shrink-0 rounded-full" style={{ background: s.color }} aria-hidden />
-          {s.label}
-        </li>
-      ))}
+    <ul className={cx('flex flex-wrap items-center gap-2', className)} aria-label={ctx ? 'Series to bring forward' : undefined}>
+      {series.map((s) => {
+        const on = s.key === lead;
+        const style = {
+          borderColor: s.color,
+          background: on ? s.color : undefined,
+          // The pill's label is the series colour pulled towards the ink, so
+          // it stays readable on the card in either theme.
+          color: on ? '#fff' : `color-mix(in oklab, ${s.color} 72%, var(--color-ink-950))`,
+        };
+        const pill = 'inline-flex h-8 items-center rounded-full border px-3.5 text-[12.5px] font-medium whitespace-nowrap';
+        return (
+          <li key={s.key}>
+            {ctx ? (
+              <button
+                type="button"
+                aria-pressed={on}
+                onClick={() => ctx.setFocus(s.key)}
+                className={cx(pill, 'press', !on && 'bg-paper hover:brightness-[0.97]')}
+                style={style}
+              >
+                {s.label}
+              </button>
+            ) : (
+              <span className={pill} style={style}>
+                {s.label}
+              </span>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

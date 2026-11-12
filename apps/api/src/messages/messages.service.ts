@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, inArray, isNull, lt, ne, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, sql, type SQL } from 'drizzle-orm';
 import type {
   AuthUser,
   ListMessagesQuery,
@@ -17,6 +17,8 @@ import { AuditService } from '../audit/audit.service';
 import { assertCan, seesAll, staffCan } from '../auth/permissions';
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+/** The unread badge counts this far; it shows "99+" well before. */
+const UNREAD_CAP = 1_000;
 
 /** The outer query's case, written out in full so it stays qualified inside the lateral subquery. */
 const OUTER_CASE_ID = sql.raw('"cases"."id"');
@@ -156,22 +158,32 @@ export class MessagesService {
     return row?.n ?? 0;
   }
 
-  /** Total unread across everything this actor can see - the nav badge. */
+  /**
+   * Total unread across everything this actor can see - the nav badge, on
+   * every page. Counted through the consultancy's unread index and only as
+   * far as UNREAD_CAP: a badge shows "99+" long before that, so a backlog of
+   * millions costs no more than a thousand.
+   */
   async unreadTotal(actor: AuthUser): Promise<number> {
     // A consultant who may not read conversations has no unread badge either.
     if (actor.role === 'consultant' && !staffCan(actor, 'chat.view')) return 0;
-    const [row] = await this.db
-      .select({ n: sql<number>`count(*)::int` })
+    const unread = this.db
+      .select({ one: sql`1` })
       .from(messages)
       .innerJoin(cases, eq(cases.id, messages.caseId))
       .innerJoin(clients, eq(clients.id, cases.clientId))
       .where(
         and(
+          // Always equal to the case's own; stated so the unread index applies.
+          eq(messages.tenantId, tenantOf(actor)),
           ne(messages.senderId, actor.id),
           isNull(messages.readAt),
           this.threadScope(actor),
         ),
-      );
+      )
+      .limit(UNREAD_CAP)
+      .as('unread');
+    const [row] = await this.db.select({ n: sql<number>`count(*)::int` }).from(unread);
     return row?.n ?? 0;
   }
 
@@ -182,10 +194,10 @@ export class MessagesService {
    */
   async threads(actor: AuthUser, limit = 50): Promise<ThreadSummary[]> {
     assertCan(actor, 'chat.view');
-    // The newest message of each case, found once per case through the
-    // (case_id, sent_at desc) index. An inner lateral join also drops cases
-    // nobody has messaged about. Previously three correlated subqueries per
-    // case, one of them evaluated again in the filter and again in the sort.
+    // Cases in the order of their newest message (`last_message_at`, kept by
+    // a trigger on messages), read from the partial index of cases that have
+    // a conversation - so the inbox reads its 50 threads, not every one. The
+    // newest message itself comes from the (case_id, sent_at desc) index.
     const last = this.db
       .select({ body: messages.body, sentAt: messages.sentAt, senderRole: messages.senderRole })
       .from(messages)
@@ -211,8 +223,10 @@ export class MessagesService {
       .leftJoin(consultants, eq(consultants.id, cases.consultantId))
       .leftJoin(users, eq(users.id, consultants.userId))
       .innerJoinLateral(last, sql`true`)
-      .where(this.threadScope(actor))
-      .orderBy(desc(last.sentAt))
+      .where(and(this.threadScope(actor), isNotNull(cases.lastMessageAt)))
+      // Exactly the index's order (no tie-breaker it does not hold), so the
+      // first `limit` entries are read in order instead of all being sorted.
+      .orderBy(desc(cases.lastMessageAt))
       .limit(limit);
 
     // Unread counts for the threads on the page only, in one grouped query.

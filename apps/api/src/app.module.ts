@@ -22,6 +22,7 @@ import { AnnouncementsModule } from './announcements/announcements.module';
 import { TeamModule } from './team/team.module';
 import { ExportModule } from './export/export.module';
 import { SyncModule } from './sync/sync.module';
+import { StatsModule } from './stats/stats.module';
 import { MailModule } from './mail/mail.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { DriveModule } from './drive/drive.module';
@@ -53,6 +54,7 @@ import { SyncInterceptor } from './sync/sync.interceptor';
     TeamModule,
     ExportModule,
     SyncModule,
+    StatsModule,
     DriveModule,
     WorkflowsModule,
     CommissionsModule,

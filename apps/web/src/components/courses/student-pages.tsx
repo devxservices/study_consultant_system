@@ -16,6 +16,7 @@ import {
   STUDENT_LIST_STATUSES,
   TRIAL_OUTCOME_LABEL,
   formatMoney,
+  formatTotal,
   type AuthUser,
   type BatchSummaryView,
   type CourseView,
@@ -410,7 +411,7 @@ export async function StudentsPage({ user, query }: { user: AuthUser; query: Rec
         <button className="h-9 rounded-lg bg-ink-900 px-3 text-[13px] font-medium text-paper">Filter</button>
       </form>
       <p className="mb-2 text-[12.5px] text-ink-500">
-        {data.total} {data.total === 1 ? 'student' : 'students'}
+        {formatTotal(data)} {data.total === 1 ? 'student' : 'students'}
         {data.owing.length ? ` · ${data.owing.map((o) => formatMoney(o.amount, o.currency)).join(' + ')} still to pay` : ''}
       </p>
       <Card className="overflow-hidden">

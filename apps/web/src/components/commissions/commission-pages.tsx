@@ -19,7 +19,7 @@ import {
 import { ApiError, apiFetch, qs } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { can } from '@/lib/permissions';
-import { Card, EmptyState, LinkButton, PageHeader, Panel, Pill, StatCard, cx, type Tone } from '../ui';
+import { Card, EmptyState, LinkButton, PageHeader, Panel, Pill, StatCard, TAB_BAR, cx, tabClass, type Tone } from '../ui';
 import { ReasonAction } from '../forms';
 import { NoAccess } from '../no-access';
 import { Pagination } from '../client-table';
@@ -55,16 +55,13 @@ function CommissionsTabs({ user, active }: { user: AuthUser; active: Commissions
     { key: 'settings', label: 'Settings', href: `${base}/settings` },
   ];
   return (
-    <nav className="-mb-px mb-5 flex gap-1 overflow-x-auto border-b border-line" aria-label="Commissions">
+    <nav className={cx(TAB_BAR, 'mb-5 pb-1')} aria-label="Commissions">
       {tabs.map((t) => (
         <Link
           key={t.key}
           href={t.href}
           aria-current={active === t.key ? 'page' : undefined}
-          className={cx(
-            'whitespace-nowrap border-b-2 px-3 pb-2.5 pt-1 text-[13.5px] font-medium',
-            active === t.key ? 'border-brand-600 text-ink-950' : 'border-transparent text-ink-500 hover:text-ink-800',
-          )}
+          className={tabClass(active === t.key)}
         >
           {t.label}
         </Link>

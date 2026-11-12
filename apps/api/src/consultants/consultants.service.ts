@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
-import { STAGE_DEFINITIONS, STAGE_ORDER, hasPermission, type AuthUser, type CreateConsultantInput, type PasswordLinkResult, type UpdateStaffInput } from '@crm/shared';
+import { hasPermission, type AuthUser, type CreateConsultantInput, type PasswordLinkResult, type UpdateStaffInput } from '@crm/shared';
 import { AuditService } from '../audit/audit.service';
 import { EntitlementsService } from '../tenancy/entitlements.service';
 import { DB } from '../db/database.module';
@@ -17,6 +17,7 @@ import { hashPassword } from '../auth/local-auth.provider';
 import { sessionsCutoff } from '../auth/auth.service';
 import { PasswordLinksService } from '../auth/password-links.service';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
+import { StatsCacheService } from '../stats/stats-cache.service';
 
 export interface ConsultantSummary {
   id: string;
@@ -42,37 +43,47 @@ export interface ConsultantSummary {
   takesClients: boolean;
 }
 
-const activeClientsSql = sql<number>`(
-  select count(*)::int from clients cl
-  where cl.assigned_consultant_id = ${consultants.id} and cl.archived = false
-)`;
+/** A document waiting to be reviewed, as `d`. */
+const PENDING_DOC = `d.status in ('pending', 'under_review') and d.deleted_at is null and d.trashed_at is null and d.superseded_by is null`;
 
-const pendingReviewsSql = sql<number>`(
-  select count(*)::int from documents d
-  left join cases c on c.id = d.case_id
-  join clients cl on cl.id = d.client_id
-  where (c.consultant_id = ${consultants.id} or cl.assigned_consultant_id = ${consultants.id})
-    and d.status in ('pending', 'under_review') and d.deleted_at is null and d.trashed_at is null and d.superseded_by is null
-)`;
+interface Workload {
+  activeClients: number;
+  pendingReviews: number;
+  stuckCases: number;
+}
 
 /**
- * Cases past their stage's own limit - the same rule as the "Not moving"
- * lists (analytics.service), so a count and the list beside it never
- * disagree: the limit the workflow copied onto the case, else the built-in
- * one for its stage. The interpolated numbers are our own constants.
+ * One consultant's workload, live - what their own dashboard header shows.
+ * Each count walks only their own records through an index:
+ * - active clients: their non-archived clients;
+ * - pending reviews: documents waiting on review on their cases, or on their
+ *   clients - a union of the two index paths, each document once;
+ * - stuck cases: their live cases past the stage's limit (`stuck_at`, the
+ *   same test as the "Not moving" lists, so a count and the list beside it
+ *   never disagree).
  */
-const stuckLimit = sql.raw(
-  `coalesce(c.stage_sla_days * interval '1 day', (case c.current_stage ${STAGE_ORDER.map(
-    (s) => `when '${s}' then interval '${STAGE_DEFINITIONS[s].stuckAfterDays} days'`,
-  ).join(' ')} end))`,
-);
-const stuckCasesSql = sql<number>`(
-  select count(*)::int from cases c
-  where c.consultant_id = ${consultants.id}
-    and c.status = 'active'
-    and c.current_stage <> 'closed'
-    and c.stage_entered_at < now() - ${stuckLimit}
-)`;
+function workloadOf(consultantId: string) {
+  return {
+    activeClients: sql<number>`(
+      select count(*)::int from clients cl
+      where cl.assigned_consultant_id = ${consultantId} and cl.archived = false
+    )`,
+    pendingReviews: sql<number>`(
+      select count(*)::int from (
+        select d.id from documents d join cases c on c.id = d.case_id
+        where c.consultant_id = ${consultantId} and ${sql.raw(PENDING_DOC)}
+        union
+        select d.id from documents d join clients cl on cl.id = d.client_id
+        where cl.assigned_consultant_id = ${consultantId} and ${sql.raw(PENDING_DOC)}
+      ) waiting
+    )`,
+    stuckCases: sql<number>`(
+      select count(*)::int from cases c
+      where c.consultant_id = ${consultantId}
+        and c.status = 'active' and c.current_stage <> 'closed' and c.stuck_at < now()
+    )`,
+  };
+}
 
 @Injectable()
 export class ConsultantsService {
@@ -81,6 +92,7 @@ export class ConsultantsService {
     private readonly audit: AuditService,
     private readonly entitlements: EntitlementsService,
     private readonly links: PasswordLinksService,
+    private readonly stats: StatsCacheService,
   ) {}
 
   /**
@@ -93,24 +105,8 @@ export class ConsultantsService {
       throw new ForbiddenException('You do not have access to the consultant list.');
     }
 
-    const rows = await this.db
-      .select({
-        id: consultants.id,
-        userId: consultants.userId,
-        name: users.fullName,
-        email: users.email,
-        phone: users.phone,
-        avatarColor: users.avatarColor,
-        active: users.isActive,
-        lastSignInAt: users.lastSignInAt,
-        countries: consultants.countries,
-        maxActiveClients: consultants.maxActiveClients,
-        activeClients: activeClientsSql,
-        pendingReviews: pendingReviewsSql,
-        stuckCases: stuckCasesSql,
-        roleTitle: staffRoles.name,
-        takesClients: sql<boolean>`coalesce(${staffRoles.takesClients}, true)`,
-      })
+    const [rows, counts] = await Promise.all([this.db
+      .select(this.rosterSelection())
       .from(consultants)
       .innerJoin(users, eq(users.id, consultants.userId))
       .leftJoin(staffRoles, eq(staffRoles.id, users.staffRoleId))
@@ -124,23 +120,86 @@ export class ConsultantsService {
             : and(eq(users.isActive, true), sql`coalesce(${staffRoles.takesClients}, true)`),
         ),
       )
-      .orderBy(asc(sql`lower(${users.fullName})`));
+      .orderBy(asc(sql`lower(${users.fullName})`)), this.rosterCounts(tenantOf(actor))]);
 
-    return rows.map((r) => ({
-      ...r,
-      countries: Array.isArray(r.countries) ? r.countries : [],
-      activeClients: r.activeClients ?? 0,
-      pendingReviews: r.pendingReviews ?? 0,
-      stuckCases: r.stuckCases ?? 0,
-      lastSignInAt: r.lastSignInAt ? new Date(r.lastSignInAt).toISOString() : null,
-    }));
+    const none: Workload = { activeClients: 0, pendingReviews: 0, stuckCases: 0 };
+    return rows.map((r) => toSummary(r, counts[r.id] ?? none));
   }
 
-  /** The signed-in consultant's own workload numbers, for their dashboard header. */
+  /**
+   * The signed-in consultant's own workload numbers, for their dashboard
+   * header - and every page of their desk, which shows the review badge.
+   * Counted live over their own records only, never the whole team.
+   */
   async me(actor: AuthUser): Promise<ConsultantSummary | null> {
     if (actor.role !== 'consultant' || !actor.consultantId) return null;
-    const all = await this.list(actor, false, true);
-    return all.find((c) => c.id === actor.consultantId) ?? null;
+    const [row] = await this.db
+      .select({ ...this.rosterSelection(), ...workloadOf(actor.consultantId) })
+      .from(consultants)
+      .innerJoin(users, eq(users.id, consultants.userId))
+      .leftJoin(staffRoles, eq(staffRoles.id, users.staffRoleId))
+      .where(and(eq(consultants.id, actor.consultantId), eq(consultants.tenantId, tenantOf(actor))))
+      .limit(1);
+    if (!row) return null;
+    return toSummary(row, {
+      activeClients: row.activeClients ?? 0,
+      pendingReviews: row.pendingReviews ?? 0,
+      stuckCases: row.stuckCases ?? 0,
+    });
+  }
+
+  private rosterSelection() {
+    return {
+      id: consultants.id,
+      userId: consultants.userId,
+      name: users.fullName,
+      email: users.email,
+      phone: users.phone,
+      avatarColor: users.avatarColor,
+      active: users.isActive,
+      lastSignInAt: users.lastSignInAt,
+      countries: consultants.countries,
+      maxActiveClients: consultants.maxActiveClients,
+      roleTitle: staffRoles.name,
+      takesClients: sql<boolean>`coalesce(${staffRoles.takesClients}, true)`,
+    };
+  }
+
+  /**
+   * Every consultant's workload in the consultancy, by consultant id: three
+   * grouped passes instead of three counts per consultant, kept in the stats
+   * cache (the team page and every consultant picker read it). The rules are
+   * those of `workloadOf`; a document waiting on both a case's consultant and
+   * the client's counts once for each of them, as it does there.
+   */
+  private rosterCounts(tenantId: string): Promise<Record<string, Workload>> {
+    return this.stats.get(tenantId, 'roster-counts', async () => {
+      const [active, pending, stuck] = await Promise.all([
+        this.db.execute(sql`
+          select assigned_consultant_id as id, count(*)::int as n from clients
+          where tenant_id = ${tenantId} and archived = false and assigned_consultant_id is not null
+          group by assigned_consultant_id`),
+        this.db.execute(sql`
+          select id, count(distinct doc)::int as n from (
+            select c.consultant_id as id, d.id as doc from documents d join cases c on c.id = d.case_id
+            where d.tenant_id = ${tenantId} and c.consultant_id is not null and ${sql.raw(PENDING_DOC)}
+            union all
+            select cl.assigned_consultant_id as id, d.id as doc from documents d join clients cl on cl.id = d.client_id
+            where d.tenant_id = ${tenantId} and cl.assigned_consultant_id is not null and ${sql.raw(PENDING_DOC)}
+          ) waiting group by id`),
+        this.db.execute(sql`
+          select consultant_id as id, count(*)::int as n from cases
+          where tenant_id = ${tenantId} and consultant_id is not null
+            and status = 'active' and current_stage <> 'closed' and stuck_at < now()
+          group by consultant_id`),
+      ]);
+      const out: Record<string, Workload> = {};
+      const at = (id: string) => (out[id] ??= { activeClients: 0, pendingReviews: 0, stuckCases: 0 });
+      for (const r of rowsOf(active)) at(r.id).activeClients = Number(r.n);
+      for (const r of rowsOf(pending)) at(r.id).pendingReviews = Number(r.n);
+      for (const r of rowsOf(stuck)) at(r.id).stuckCases = Number(r.n);
+      return out;
+    });
   }
 
   /**
@@ -319,4 +378,44 @@ export class ConsultantsService {
     if (!row) throw new NotFoundException('Consultant not found.');
     return row;
   }
+}
+
+/** A roster row with its workload, as the API returns it. */
+function toSummary(
+  r: {
+    id: string;
+    userId: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    avatarColor: string;
+    active: boolean;
+    lastSignInAt: Date | string | null;
+    countries: unknown;
+    maxActiveClients: number;
+    roleTitle: string | null;
+    takesClients: boolean;
+  },
+  work: Workload,
+): ConsultantSummary {
+  return {
+    id: r.id,
+    userId: r.userId,
+    name: r.name,
+    email: r.email,
+    phone: r.phone,
+    avatarColor: r.avatarColor,
+    active: r.active,
+    lastSignInAt: r.lastSignInAt ? new Date(r.lastSignInAt).toISOString() : null,
+    countries: Array.isArray(r.countries) ? (r.countries as string[]) : [],
+    maxActiveClients: r.maxActiveClients,
+    roleTitle: r.roleTitle,
+    takesClients: r.takesClients,
+    ...work,
+  };
+}
+
+/** Both drivers answer `execute` with `rows`. */
+function rowsOf(result: unknown): { id: string; n: number | string }[] {
+  return ((result as { rows?: { id: string; n: number | string }[] }).rows ?? []);
 }

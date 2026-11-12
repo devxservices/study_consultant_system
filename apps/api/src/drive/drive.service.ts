@@ -49,7 +49,8 @@ import { FoldersService } from '../documents/folders.service';
 import { documentScope, studentScope } from '../documents/drive-sql';
 import { STORAGE, type StorageDriver } from '../storage/storage.driver';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
-import { NIL_UUID, iso, isoOrNull, isUniqueViolation, page, today } from '../common/db-helpers';
+import { NIL_UUID, iso, isoOrNull, isUniqueViolation, today } from '../common/db-helpers';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { ChecklistService } from './checklist.service';
 
 const reviewer = alias(users, 'reviewer');
@@ -162,31 +163,37 @@ export class DriveService {
     this.applyFilters(conditions, query);
 
     const where = and(...conditions);
-    const [[count], rows] = await Promise.all([
-      this.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(documents)
-        .leftJoin(clients, eq(clients.id, documents.clientId))
-        .leftJoin(cases, eq(cases.id, documents.caseId))
-        .innerJoin(users, eq(users.id, documents.uploadedBy))
-        .where(where),
+    const pageNo = clampPage(query.page, query.pageSize);
+    const [count, rows] = await Promise.all([
+      countCapped(
+        this.db,
+        this.db
+          .select({ one: sql`1` })
+          .from(documents)
+          .leftJoin(clients, eq(clients.id, documents.clientId))
+          .leftJoin(cases, eq(cases.id, documents.caseId))
+          .innerJoin(users, eq(users.id, documents.uploadedBy))
+          .where(where),
+      ),
       this.selectDocuments(actor)
         .where(where)
         .orderBy(...this.order(query.sort ?? (view === 'expiring' ? 'expiry' : 'newest')))
         .limit(query.pageSize)
-        .offset((query.page - 1) * query.pageSize),
+        .offset((pageNo - 1) * query.pageSize),
     ]);
 
-    const total = count?.n ?? 0;
+    // The listing's own shape, with the usual paging fields.
+    const envelope = paged([], pageNo, query.pageSize, count);
     return {
       folder: folder ? await this.folders.view(actor, folder.id) : null,
       breadcrumb,
       folders,
       documents: rows.map((r) => this.toView(actor, r)),
-      total,
-      page: query.page,
-      pageSize: query.pageSize,
-      totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
+      total: envelope.total,
+      page: envelope.page,
+      pageSize: envelope.pageSize,
+      totalPages: envelope.totalPages,
+      ...(envelope.totalCapped ? { totalCapped: true } : {}),
     };
   }
 
@@ -363,8 +370,9 @@ export class DriveService {
       query.q ? or(ilike(clients.fullName, `%${query.q}%`), ilike(clients.email, `%${query.q}%`)) : undefined,
     );
     const live = sql`d.client_id = ${clients.id} and d.deleted_at is null and d.trashed_at is null and d.superseded_by is null`;
-    const [[count], rows] = await Promise.all([
-      this.db.select({ n: sql<number>`count(*)::int` }).from(clients).where(where),
+    const pageNo = clampPage(query.page, query.pageSize);
+    const [count, rows] = await Promise.all([
+      countCapped(this.db, this.db.select({ one: sql`1` }).from(clients).where(where)),
       this.db
         .select({
           clientId: clients.id,
@@ -381,10 +389,10 @@ export class DriveService {
         .where(where)
         .orderBy(sql`(select max(d.uploaded_at) from documents d where ${live}) desc nulls last`, asc(clients.fullName))
         .limit(query.pageSize)
-        .offset((query.page - 1) * query.pageSize),
+        .offset((pageNo - 1) * query.pageSize),
     ]);
     const completion = await this.checklists.completionFor(tenantId, rows.map((r) => r.clientId));
-    return page(
+    return paged(
       rows.map((r) => ({
         ...r,
         documentCount: Number(r.documentCount),
@@ -392,9 +400,9 @@ export class DriveService {
         lastUploadAt: r.lastUploadAt ? iso(r.lastUploadAt) : null,
         completion: completion.get(r.clientId) ?? null,
       })),
-      count?.n ?? 0,
-      query.page,
+      pageNo,
       query.pageSize,
+      count,
     );
   }
 

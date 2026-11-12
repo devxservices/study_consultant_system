@@ -50,7 +50,8 @@ import { VirusScanner } from '../storage/virus-scan';
 import { validateUpload, type ValidatedFile } from './file-validation';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
 import { seesAll } from '../auth/permissions';
-import { NIL_UUID, iso, isoOrNull, page } from '../common/db-helpers';
+import { NIL_UUID, iso, isoOrNull } from '../common/db-helpers';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { documentScope } from './drive-sql';
 import { FoldersService } from './folders.service';
 import { DriveSettingsService } from './drive-settings.service';
@@ -745,14 +746,18 @@ export class DocumentsService {
     if (query.awaiting) conditions.push(inArray(documents.status, ['pending', 'under_review']), isNull(documents.supersededBy));
     if (query.type) conditions.push(eq(documents.typeKey, query.type));
     const where = and(...conditions);
+    const pageNo = clampPage(query.page, query.pageSize);
 
-    const [[totalRow], rows] = await Promise.all([
-      this.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(documents)
-        .leftJoin(cases, eq(cases.id, documents.caseId))
-        .leftJoin(clients, eq(clients.id, documents.clientId))
-        .where(where),
+    const [count, rows] = await Promise.all([
+      countCapped(
+        this.db,
+        this.db
+          .select({ one: sql`1` })
+          .from(documents)
+          .leftJoin(cases, eq(cases.id, documents.caseId))
+          .leftJoin(clients, eq(clients.id, documents.clientId))
+          .where(where),
+      ),
       this.db
         .select(this.selection())
         .from(documents)
@@ -762,7 +767,7 @@ export class DocumentsService {
         .where(where)
         .orderBy(query.sort === 'newest' ? desc(documents.uploadedAt) : asc(documents.uploadedAt))
         .limit(query.pageSize)
-        .offset((query.page - 1) * query.pageSize),
+        .offset((pageNo - 1) * query.pageSize),
     ]);
 
     // Without an N+1: comments and reviewer names for the whole page in one
@@ -781,7 +786,7 @@ export class DocumentsService {
         ),
       ),
     );
-    return page(items, totalRow?.n ?? 0, query.page, query.pageSize);
+    return paged(items, pageNo, query.pageSize, count);
   }
 
   async view(actor: AuthUser, documentId: string): Promise<DocumentView> {

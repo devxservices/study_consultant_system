@@ -10,7 +10,7 @@ export const INPUT =
   'transition-[border-color,box-shadow] duration-150 focus:border-brand-500 focus:shadow-[0_0_0_4px_var(--color-brand-100)] focus:outline-none';
 
 export const SUBMIT =
-  'press flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 text-[15px] font-medium text-white ' +
+  'press flex h-11 w-full items-center justify-center gap-2 rounded-full bg-brand-600 text-[15px] font-semibold text-white ' +
   'shadow-[0_8px_20px_-10px_var(--color-brand-600)] hover:brightness-[0.93] disabled:opacity-50';
 
 /** Inside the button, so the press is answered on the same frame as the click. */

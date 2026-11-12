@@ -4,13 +4,15 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { randomBytes, randomUUID } from 'node:crypto';
-import type { Readable } from 'node:stream';
 import {
   DOMAIN_VERIFICATION_PREFIX,
   DOMAIN_VERIFICATION_VALUE_PREFIX,
+  LOGO_MAX_BYTES,
+  LOGO_TYPES,
   type AddDomainInput,
   type BrandingSettings,
   type DomainCheckResult,
@@ -38,25 +40,34 @@ import { AuditService } from '../audit/audit.service';
 import { hashPassword } from '../auth/local-auth.provider';
 import { STORAGE, type StorageDriver } from '../storage/storage.driver';
 import { sniffMimeType } from '../documents/file-validation';
+import { ImagesBusyError, normalizeLogo, touchIcon, UnreadableImageError, type LogoKind } from './logo-image';
 import {
   TenantResolver,
+  fullLogoUrlFor,
   logoUrlFor,
   platformHostFor,
   tenancyConfig,
 } from './tenant-resolver.service';
 
-/** Logos are shown on every page, so they are kept small and never SVG (which can carry script). */
-const LOGO_MAX_BYTES = 1024 * 1024;
-const LOGO_TYPES: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/webp': 'webp',
-};
+/** Logos are never SVG, which can carry script; every upload is re-encoded as PNG. */
+const ACCEPTED_LOGO_TYPES = new Set<string>(LOGO_TYPES);
+/** Older uploads were kept in their own format; they are still served as such. */
 export const LOGO_MIME_BY_EXT: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',
   webp: 'image/webp',
 };
+
+/**
+ * A consultancy has two logos: the square icon (browser tab, collapsed menu,
+ * anywhere small) and the wide full logo (expanded menu, sign-in page).
+ */
+export type { LogoKind };
+
+const LOGO_SLOTS = {
+  icon: { column: 'logoKey', file: 'logo', audit: 'logo', label: 'icon' },
+  full: { column: 'fullLogoKey', file: 'full-logo', audit: 'full_logo', label: 'full logo' },
+} as const satisfies Record<LogoKind, { column: keyof TenantRow; file: string; audit: string; label: string }>;
 
 /**
  * The outer tenant, named explicitly. In a single-table select Drizzle renders a
@@ -194,6 +205,7 @@ export class TenantsService {
       slug: t.slug,
       primaryColor: t.primaryColor,
       logoUrl: logoUrlFor(t),
+      fullLogoUrl: fullLogoUrlFor(t),
       contactEmail: t.contactEmail,
       contactPhone: t.contactPhone,
       platformHost,
@@ -356,24 +368,39 @@ export class TenantsService {
   /* Logo                                                              */
   /* ---------------------------------------------------------------- */
 
-  async setLogo(actor: AuthUser, id: string, file: { buffer: Buffer; size: number }) {
+  async setLogo(actor: AuthUser, id: string, file: { buffer: Buffer; size: number }, kind: LogoKind = 'icon') {
+    const slot = LOGO_SLOTS[kind];
     const current = await this.findRow(id);
 
     if (!file.buffer?.length) throw logoError('That file appears to be empty.');
-    if (file.size > LOGO_MAX_BYTES) throw logoError('Logos must be 1 MB or smaller.');
+    // The upload route stops reading at the cap already; this holds for any other caller.
+    if (file.size > LOGO_MAX_BYTES || file.buffer.length > LOGO_MAX_BYTES) {
+      throw logoError(`Logos can be up to ${LOGO_MAX_BYTES / 1024 / 1024} MB.`);
+    }
 
     // Judged by the leading bytes, not the name or the browser's claim.
     const mime = sniffMimeType(file.buffer);
-    const ext = mime ? LOGO_TYPES[mime] : undefined;
-    if (!mime || !ext) throw logoError('Upload the logo as a PNG, JPG or WEBP image.');
+    if (!mime || !ACCEPTED_LOGO_TYPES.has(mime)) throw logoError(`Upload the ${slot.label} as a PNG, JPG or WEBP image.`);
 
-    const key = `tenants/${id}/branding/logo-${randomUUID()}.${ext}`;
-    await this.storage.put(key, file.buffer, mime);
+    // Stored the way it is shown: decoded, trimmed, sized, metadata stripped.
+    // Re-encoding also means nothing hidden in the upload survives into the file served.
+    let image: Awaited<ReturnType<typeof normalizeLogo>>;
+    try {
+      image = await normalizeLogo(file.buffer, kind);
+    } catch (err) {
+      if (err instanceof UnreadableImageError) throw logoError(err.message);
+      if (err instanceof ImagesBusyError) throw new ServiceUnavailableException(err.message);
+      throw err;
+    }
+
+    const key = `tenants/${id}/branding/${slot.file}-${randomUUID()}.png`;
+    await this.storage.put(key, image.data, 'image/png');
     await this.db
       .update(tenants)
-      .set({ logoKey: key, updatedAt: new Date() })
+      .set({ [slot.column]: key, updatedAt: new Date() })
       .where(eq(tenants.id, id));
-    if (current.logoKey) await this.storage.delete(current.logoKey);
+    const previous = current[slot.column];
+    if (previous) await this.storage.delete(previous);
     this.resolver.invalidate();
 
     await this.audit.record(actor, {
@@ -381,21 +408,23 @@ export class TenantsService {
       entityType: 'tenant',
       entityId: id,
       tenantId: id,
-      metadata: { changed: ['logo'] },
+      metadata: { changed: [slot.audit] },
     });
 
     return this.get(id);
   }
 
-  async removeLogo(actor: AuthUser, id: string) {
+  async removeLogo(actor: AuthUser, id: string, kind: LogoKind = 'icon') {
+    const slot = LOGO_SLOTS[kind];
     const current = await this.findRow(id);
-    if (!current.logoKey) return this.get(id);
+    const previous = current[slot.column];
+    if (!previous) return this.get(id);
 
     await this.db
       .update(tenants)
-      .set({ logoKey: null, updatedAt: new Date() })
+      .set({ [slot.column]: null, updatedAt: new Date() })
       .where(eq(tenants.id, id));
-    await this.storage.delete(current.logoKey);
+    await this.storage.delete(previous);
     this.resolver.invalidate();
 
     await this.audit.record(actor, {
@@ -403,26 +432,47 @@ export class TenantsService {
       entityType: 'tenant',
       entityId: id,
       tenantId: id,
-      metadata: { changed: ['logo'], removed: true },
+      metadata: { changed: [slot.audit], removed: true },
     });
 
     return this.get(id);
   }
 
-  /** Public: a logo is shown on the sign-in page, before anyone is signed in. */
-  async logo(tenantId: string): Promise<{ stream: Readable; mimeType: string }> {
+  /**
+   * Public: a logo is shown on the sign-in page, before anyone is signed in.
+   * Served from memory once read - a stored logo never changes (a new upload
+   * is a new key), so a flood of requests costs no storage reads.
+   */
+  async logo(tenantId: string, kind: LogoKind = 'icon'): Promise<{ data: Buffer; mimeType: string }> {
+    const key = await this.logoKeyOf(tenantId, kind);
+    const mimeType = LOGO_MIME_BY_EXT[key.split('.').pop() ?? ''];
+    if (!mimeType) throw new NotFoundException('No logo.');
+    return { data: await this.logoBytes.get(key, () => this.storage.read(key)), mimeType };
+  }
+
+  /** Public: the icon as iOS wants it for a home-screen shortcut (180 px, opaque). Made once, then kept. */
+  async touchIcon(tenantId: string): Promise<Buffer> {
+    const key = await this.logoKeyOf(tenantId, 'icon');
+    return this.logoBytes.get(`apple:${key}`, async () => {
+      try {
+        return await touchIcon(await this.storage.read(key));
+      } catch (err) {
+        if (err instanceof ImagesBusyError) throw new ServiceUnavailableException(err.message);
+        throw err;
+      }
+    });
+  }
+
+  private readonly logoBytes = new ByteCache(16 * 1024 * 1024);
+
+  private async logoKeyOf(tenantId: string, kind: LogoKind): Promise<string> {
     const [row] = await this.db
-      .select({ logoKey: tenants.logoKey })
+      .select({ key: tenants[LOGO_SLOTS[kind].column] })
       .from(tenants)
       .where(eq(tenants.id, tenantId))
       .limit(1);
-    if (!row?.logoKey) throw new NotFoundException('No logo.');
-
-    const ext = row.logoKey.split('.').pop() ?? '';
-    const mimeType = LOGO_MIME_BY_EXT[ext];
-    if (!mimeType) throw new NotFoundException('No logo.');
-
-    return { stream: await this.storage.get(row.logoKey), mimeType };
+    if (!row?.key) throw new NotFoundException('No logo.');
+    return row.key;
   }
 
   /* ---------------------------------------------------------------- */
@@ -595,6 +645,7 @@ function toSummary(
     statusReason: t.statusReason,
     primaryColor: t.primaryColor,
     logoUrl: logoUrlFor(t),
+    fullLogoUrl: fullLogoUrlFor(t),
     platformHost: platformHostFor(t.slug),
     createdAt: iso(t.createdAt),
     counts: {
@@ -652,3 +703,39 @@ function iso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
+
+/**
+ * Small immutable files kept in memory, oldest out first, within a byte
+ * budget. Concurrent misses for the same key share one load.
+ */
+class ByteCache {
+  private readonly entries = new Map<string, Buffer>();
+  private readonly loading = new Map<string, Promise<Buffer>>();
+  private bytes = 0;
+
+  constructor(private readonly budget: number) {}
+
+  async get(key: string, load: () => Promise<Buffer>): Promise<Buffer> {
+    const hit = this.entries.get(key);
+    if (hit) return hit;
+    const pending = this.loading.get(key);
+    if (pending) return pending;
+    const promise = load()
+      .then((data) => {
+        // A file over an eighth of the budget is served but not kept.
+        if (data.length <= this.budget / 8) {
+          this.entries.set(key, data);
+          this.bytes += data.length;
+          for (const [k, v] of this.entries) {
+            if (this.bytes <= this.budget) break;
+            this.entries.delete(k);
+            this.bytes -= v.length;
+          }
+        }
+        return data;
+      })
+      .finally(() => this.loading.delete(key));
+    this.loading.set(key, promise);
+    return promise;
+  }
+}

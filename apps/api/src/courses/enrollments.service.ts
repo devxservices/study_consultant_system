@@ -34,6 +34,7 @@ import { PdfService } from '../finance/pdf.service';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
 import { staffCan } from '../auth/permissions';
 import { addDays, iso, isoOrNull, today, withDocumentNumber } from '../common/db-helpers';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { CoursesService } from './courses.service';
 import { qualified } from '../documents/drive-sql';
 
@@ -458,18 +459,13 @@ export class EnrollmentsService implements OnModuleInit {
         .innerJoin(clients, eq(clients.id, enrollments.clientId))
         .leftJoin(invoices, eq(invoices.id, enrollments.invoiceId))
         .where(where);
-    const [rows, [count], owing] = await Promise.all([
+    const pageNo = clampPage(q.page, q.pageSize);
+    const [rows, count, owing] = await Promise.all([
       base()
         .orderBy(desc(batches.startDate), asc(clients.fullName))
         .limit(q.pageSize)
-        .offset((q.page - 1) * q.pageSize),
-      this.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(enrollments)
-        .innerJoin(batches, eq(batches.id, enrollments.batchId))
-        .innerJoin(clients, eq(clients.id, enrollments.clientId))
-        .leftJoin(invoices, eq(invoices.id, enrollments.invoiceId))
-        .where(where),
+        .offset((pageNo - 1) * q.pageSize),
+      countCapped(this.db, base()),
       // Each invoice once: a bundle's invoice covers several enrolments.
       this.db
         .select({ currency: invoices.currency, amount: sql<string>`sum(${balance})` })
@@ -483,13 +479,8 @@ export class EnrollmentsService implements OnModuleInit {
         )
         .groupBy(invoices.currency),
     ]);
-    const total = count?.n ?? 0;
     return {
-      items: await this.views(rows.map((r) => r.id)),
-      page: q.page,
-      pageSize: q.pageSize,
-      total,
-      totalPages: Math.max(1, Math.ceil(total / q.pageSize)),
+      ...paged(await this.views(rows.map((r) => r.id)), pageNo, q.pageSize, count),
       owing: owing.map((o) => ({ currency: o.currency as Currency, amount: Number(o.amount) })).filter((o) => o.amount > 0),
     };
   }

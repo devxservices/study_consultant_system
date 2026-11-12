@@ -1,17 +1,18 @@
 import type { ReactNode } from 'react';
 import { STAGE_DEFINITIONS } from '@crm/shared';
 import { siteBranding, siteName, type Site } from '@/lib/site';
-import { BrandMark } from '@/components/brand-mark';
+import { BrandLockup, BrandMark, FullLogo } from '@/components/brand-mark';
 import { IconCheck, IconShield, IconChat, IconGlobe, IconUsers } from '@/components/icons';
 
 /**
  * The front door's frame, shared by signing in, asking for a reset link and
  * choosing a password: two panes on a wide screen, one on a phone.
  *
- * The dark pane is the same plane as the app's navigation rail, so signing in
- * looks like the front door of the thing you are about to be inside. It is
- * decoration in the strict sense - it carries no controls - so it is the half
- * that disappears below `lg` rather than the form.
+ * The showcase pane is built from the app's own pieces - the canvas, white
+ * cards, the brand's discs - so signing in looks like the front door of the
+ * thing you are about to be inside. It is decoration in the strict sense - it
+ * carries no controls - so it is the half that disappears below `lg` rather
+ * than the form.
  */
 export function AuthFrame({
   site,
@@ -36,8 +37,12 @@ export function AuthFrame({
         <main className="flex flex-1 items-center justify-center px-5 py-10">
           <div className="page-enter w-full max-w-[380px]">
             <div className="mb-7">
-              <BrandMark name={name} branding={branding} size={46} className="mb-6" />
-              <h1 className="text-[26px] font-medium tracking-[-0.02em] text-ink-950">{title}</h1>
+              {branding?.fullLogoUrl ? (
+                <FullLogo name={name} url={branding.fullLogoUrl} height={44} className="mb-6" />
+              ) : (
+                <BrandMark name={name} branding={branding} size={46} className="mb-6" />
+              )}
+              <h1 className="text-[26px] font-bold tracking-[-0.02em] text-ink-950">{title}</h1>
               <p className="mt-1.5 text-[14px] text-ink-500">{subtitle}</p>
             </div>
             {children}
@@ -97,22 +102,26 @@ function Showcase({ site }: { site: Site }) {
   );
 
   return (
-    <aside className="relative hidden overflow-hidden bg-rail-950 p-12 lg:flex lg:flex-col lg:justify-center">
+    <aside className="relative hidden overflow-hidden bg-canvas p-12 lg:flex lg:flex-col lg:justify-center">
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-40 -top-40 size-[520px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-brand-600)_45%,transparent),transparent)]"
+        className="pointer-events-none absolute -left-40 -top-40 size-[520px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-brand-500)_30%,transparent),transparent)]"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-48 -right-32 size-[560px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-series-2)_22%,transparent),transparent)]"
+        className="pointer-events-none absolute -bottom-48 -right-32 size-[560px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-series-3)_18%,transparent),transparent)]"
       />
       <div className="relative mx-auto w-full max-w-[440px]">
-        <div className="mb-10 flex items-center gap-3">
-          <BrandMark name={name} branding={branding} size={36} />
-          <span className="text-[16px] font-medium text-rail-ink">{name}</span>
-        </div>
+        <BrandLockup
+          name={name}
+          branding={branding}
+          markSize={36}
+          logoHeight={40}
+          className="mb-10"
+          nameClassName="text-[18px]"
+        />
 
-        <h2 className="text-[32px] font-medium leading-[1.2] tracking-[-0.02em] text-rail-ink">
+        <h2 className="text-[32px] font-bold leading-[1.2] tracking-[-0.025em] text-ink-950">
           {site.kind === 'platform'
             ? 'Run every consultancy on the platform from one place.'
             : 'Every study visa application, from first call to decision.'}
@@ -121,23 +130,20 @@ function Showcase({ site }: { site: Site }) {
         <ul className="mt-9 space-y-6">
           {points.map((p) => (
             <li key={p.title} className="flex gap-3.5">
-              <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.07] text-rail-ink ring-1 ring-white/10">
+              <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
                 {p.icon}
               </span>
               <div>
-                <p className="text-[14.5px] font-medium text-rail-ink">{p.title}</p>
-                <p className="mt-0.5 text-[13.5px] leading-relaxed text-rail-muted">{p.body}</p>
+                <p className="text-[14.5px] font-semibold text-ink-950">{p.title}</p>
+                <p className="mt-0.5 text-[13.5px] leading-relaxed text-ink-500">{p.body}</p>
               </div>
             </li>
           ))}
         </ul>
 
         {site.kind !== 'platform' && steps.length > 0 && (
-          <div
-            aria-hidden
-            className="float mt-12 w-[300px] rounded-2xl bg-white/[0.06] p-4 shadow-[0_24px_48px_-24px_rgb(0_0_0/0.6)] ring-1 ring-white/10 backdrop-blur-md"
-          >
-            <p className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-rail-dim">Your application</p>
+          <div aria-hidden className="float mt-12 w-[300px] rounded-xl bg-paper p-5 shadow-pop">
+            <p className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-ink-400">Your application</p>
             <ol className="mt-3 space-y-2.5">
               {steps.map((label, i) => (
                 <li key={label} className="flex items-center gap-2.5 text-[13px]">
@@ -146,13 +152,13 @@ function Showcase({ site }: { site: Site }) {
                       <IconCheck size={12} strokeWidth={2.5} />
                     </span>
                   ) : i === 2 ? (
-                    <span className="flex size-5 items-center justify-center rounded-full ring-2 ring-brand-400">
-                      <span className="size-2 rounded-full bg-brand-400" />
+                    <span className="flex size-5 items-center justify-center rounded-full ring-2 ring-brand-500">
+                      <span className="size-2 rounded-full bg-brand-500" />
                     </span>
                   ) : (
-                    <span className="size-5 rounded-full ring-2 ring-white/15" />
+                    <span className="size-5 rounded-full ring-2 ring-ink-200" />
                   )}
-                  <span className={i <= 2 ? 'text-rail-ink' : 'text-rail-dim'}>{label}</span>
+                  <span className={i <= 2 ? 'font-medium text-ink-900' : 'text-ink-400'}>{label}</span>
                 </li>
               ))}
             </ol>

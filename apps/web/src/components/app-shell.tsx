@@ -8,13 +8,13 @@ import {
   type TenantBranding,
 } from '@crm/shared';
 import { getSite, siteBranding, siteName } from '@/lib/site';
-import { BrandMark } from './brand-mark';
-import { Avatar, cx } from './ui';
+import { BrandLockup, BrandMark, FullLogo } from './brand-mark';
+import { cx } from './ui';
 import { SignOutButton } from './sign-out';
 import { NotificationBell } from './notification-bell';
 import { NavLink } from './nav-link';
 import { GlobalSearch } from './global-search';
-import { ThemeToggle, ThemeToggleButton } from './theme-toggle';
+import { ThemeToggleButton } from './theme-toggle';
 import { RailToggle } from './rail-toggle';
 import { PermissionsProvider } from './permissions-context';
 import { AccountMenu, MessagesFab, MoreMenu, QuickCreate, type QuickAction } from './shell-menus';
@@ -36,11 +36,10 @@ export interface NavItem {
 /**
  * One chrome for every portal.
  *
- * A navy navigation rail: people move between a handful of destinations all
- * day, and a rail keeps every one of them one click away while the lit area
- * beside it stays entirely data. Beside it, a top bar of white tiles - search,
- * theme, notifications, the account - that is transparent over the canvas
- * until content scrolls beneath it. On a phone the rail becomes a bottom bar,
+ * A white sidebar: people move between a handful of destinations all day, and
+ * a sidebar keeps every one of them one click away while the canvas beside it
+ * stays entirely data. Above the canvas, a white top bar - search, theme,
+ * notifications, the account. On a phone the sidebar becomes a bottom bar,
  * because the thumb does not reach the top of the screen.
  */
 interface ShellProps {
@@ -103,7 +102,9 @@ async function ShellBody({
     );
   }
 
-  const hrefs = nav.map((n) => n.href);
+  // The account page is reachable from the sidebar's foot, so it joins the
+  // longest-prefix match: on it, the section root must not light up too.
+  const hrefs = [...nav.map((n) => n.href), accountHref];
 
   return (
     <div id="app-shell" className="group/shell min-h-dvh" suppressHydrationWarning>
@@ -115,11 +116,11 @@ async function ShellBody({
             "(function(){try{if(localStorage.getItem('rail')==='collapsed'){(document.currentScript&&document.currentScript.parentElement||document.getElementById('app-shell')).setAttribute('data-collapsed','true');}}catch(e){}})();",
         }}
       />
-      <Rail user={user} nav={nav} brand={brand} />
+      <Rail nav={nav} hrefs={hrefs} brand={brand} accountHref={accountHref} />
 
       <div className="flex min-h-dvh flex-col lg:pl-[264px] group-data-[collapsed=true]/shell:lg:pl-[84px] print:!pl-0">
         <header className="topbar sticky top-0 z-30 print:hidden">
-          <div className="flex h-16 items-center gap-2.5 px-4 sm:h-[72px] sm:px-6 xl:px-8">
+          <div className="flex h-16 items-center gap-2.5 px-4 sm:h-[76px] sm:px-6 xl:px-8">
             {/* The wordmark appears only where the rail is not: on desktop the
                 rail already carries it, and repeating it wastes the row. */}
             <Link href="/" className="flex shrink-0 items-center gap-2 lg:hidden" title={brand.name}>
@@ -144,7 +145,7 @@ async function ShellBody({
           </div>
         </header>
 
-        <main className="page-enter w-full flex-1 px-4 pb-6 pt-1 sm:px-6 xl:px-8 print:p-0">
+        <main className="page-enter w-full flex-1 px-4 pb-6 pt-5 sm:px-6 sm:pt-6 xl:px-8 print:p-0">
           {children}
         </main>
 
@@ -198,56 +199,64 @@ function groupBySection(nav: NavItem[]): { section: string; items: NavItem[] }[]
   return groups;
 }
 
-function Rail({ user, nav, brand }: { user: AuthUser; nav: NavItem[]; brand: Brand }) {
-  const hrefs = nav.map((n) => n.href);
+function Rail({
+  nav,
+  hrefs,
+  brand,
+  accountHref,
+}: {
+  nav: NavItem[];
+  hrefs: string[];
+  brand: Brand;
+  accountHref: string;
+}) {
   return (
     <aside
-      className="rail-scroll fixed inset-y-0 left-0 z-40 hidden w-[264px] flex-col overflow-y-auto bg-rail-950 lg:flex group-data-[collapsed=true]/shell:w-[84px] print:!hidden"
+      id="app-rail"
+      className="fixed inset-y-0 left-0 z-40 hidden w-[264px] flex-col border-r border-rail-line bg-rail-950 lg:flex group-data-[collapsed=true]/shell:w-[84px] print:!hidden"
       aria-label="Sidebar"
     >
-      {/* A faint wash of the brand colour behind the wordmark. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(110%_70%_at_0%_0%,color-mix(in_oklab,var(--color-brand-600)_28%,transparent),transparent_70%)]"
-      />
-
-      <div className="relative flex h-[72px] shrink-0 items-center gap-2.5 px-5 group-data-[collapsed=true]/shell:h-auto group-data-[collapsed=true]/shell:flex-col group-data-[collapsed=true]/shell:gap-3 group-data-[collapsed=true]/shell:px-2 group-data-[collapsed=true]/shell:py-4">
-        <Link href="/" className="group flex min-w-0 items-center gap-3" title={brand.name}>
-          <BrandMark {...brand} className="transition-transform duration-300 group-hover:scale-105" />
-          <span className="truncate text-[16px] font-semibold leading-tight tracking-[-0.01em] text-rail-ink group-data-[collapsed=true]/shell:hidden">
-            {brand.name}
-          </span>
+      {/* The brand, level with the top bar beside it: the full logo (or the icon
+          and the whole name) when open, the icon alone when collapsed - the same
+          picture as the browser tab. It stays put while the menu below scrolls,
+          and the collapse button sits on its edge, next after it for the keyboard. */}
+      <div className="relative flex h-[76px] shrink-0 items-center px-6 group-data-[collapsed=true]/shell:justify-center group-data-[collapsed=true]/shell:px-0">
+        <Link href="/" className="group flex min-w-0 items-center gap-3" title={brand.name} aria-label={brand.name}>
+          {brand.branding?.fullLogoUrl ? (
+            <>
+              <FullLogo
+                name={brand.name}
+                url={brand.branding.fullLogoUrl}
+                height={40}
+                className="group-data-[collapsed=true]/shell:hidden"
+              />
+              <span className="hidden group-data-[collapsed=true]/shell:block">
+                <BrandMark {...brand} size={40} className="transition-transform duration-300 group-hover:scale-105" />
+              </span>
+            </>
+          ) : (
+            <>
+              <BrandMark {...brand} size={40} className="transition-transform duration-300 group-hover:scale-105" />
+              <span className="line-clamp-2 min-w-0 break-words text-[16.5px] font-bold leading-[1.2] tracking-[-0.02em] text-rail-ink group-data-[collapsed=true]/shell:hidden">
+                {brand.name}
+              </span>
+            </>
+          )}
         </Link>
-        <span className="ml-auto group-data-[collapsed=true]/shell:ml-0">
-          <RailToggle />
-        </span>
+        <RailToggle />
       </div>
 
-      {/* Who am I signed in as, answered without opening a menu. More support
-          calls start with that question than with any other. */}
-      <div
-        className="relative mx-4 mb-6 mt-1 flex items-center gap-3 rounded-xl bg-white/[0.04] px-3 py-2.5 ring-1 ring-white/[0.06] group-data-[collapsed=true]/shell:mx-auto group-data-[collapsed=true]/shell:bg-transparent group-data-[collapsed=true]/shell:p-0 group-data-[collapsed=true]/shell:ring-0"
-        title={user.fullName}
-      >
-        <span className="rounded-full ring-2 ring-white/10">
-          <Avatar name={user.fullName} size={36} tone="rail" />
-        </span>
-        <div className="min-w-0 group-data-[collapsed=true]/shell:hidden">
-          <p className="truncate text-[13.5px] font-medium leading-5 text-rail-ink">{user.fullName}</p>
-          <p className="truncate text-[12px] leading-4 text-rail-muted">{user.roleTitle ?? ROLE_LABEL[user.role]}</p>
-        </div>
-      </div>
-
-      <nav className="relative flex-1 space-y-6 px-3 group-data-[collapsed=true]/shell:space-y-3 group-data-[collapsed=true]/shell:px-2" aria-label="Main">
+      <div className="rail-scroll flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <nav className="flex-1 space-y-5 pt-3 group-data-[collapsed=true]/shell:space-y-3" aria-label="Main">
         {groupBySection(nav).map((group, i) => (
           <div key={group.section}>
-            <p className="px-3 pb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-rail-dim group-data-[collapsed=true]/shell:hidden">
+            <p className="px-6 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-rail-dim group-data-[collapsed=true]/shell:hidden">
               {group.section}
             </p>
             {i > 0 && (
               <span aria-hidden className="mx-auto mb-3 hidden h-px w-8 bg-rail-line group-data-[collapsed=true]/shell:block" />
             )}
-            <ul className="space-y-1">
+            <ul className="space-y-0.5">
               {group.items.map((item) => (
                 <li key={item.href}>
                   <NavLink href={item.href} badge={item.badge} rail siblings={hrefs}>
@@ -260,13 +269,14 @@ function Rail({ user, nav, brand }: { user: AuthUser; nav: NavItem[]; brand: Bra
         ))}
       </nav>
 
-      <div className="relative mt-6 space-y-2 border-t border-rail-line p-3 group-data-[collapsed=true]/shell:px-2">
-        {/* The segmented control needs room for two labels; when the rail is
-            narrow the theme lives on the topbar's tile instead. */}
-        <div className="group-data-[collapsed=true]/shell:hidden">
-          <ThemeToggle />
-        </div>
+      {/* Settings at the foot, as in the reference, then the way out. Named
+          for the account where the nav already has a "Settings" of its own. */}
+      <div className="mt-6 space-y-0.5 pb-4 pt-2">
+        <NavLink href={accountHref} rail siblings={hrefs}>
+          {nav.some((n) => n.label === 'Settings') ? 'Account settings' : 'Settings'}
+        </NavLink>
         <SignOutButton rail />
+      </div>
       </div>
     </aside>
   );
@@ -335,9 +345,14 @@ function PortalShell({
     <div className="min-h-dvh">
       <header className="topbar sticky top-0 z-30">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-3 px-4">
-          <Link href="/portal" className="flex min-w-0 items-center gap-2.5">
-            <BrandMark {...brand} />
-            <span className="truncate text-[15px] font-medium text-ink-950">{brand.name}</span>
+          <Link href="/portal" className="flex min-w-0 items-center" aria-label={brand.name}>
+            <BrandLockup
+              {...brand}
+              markSize={36}
+              logoHeight={34}
+              className="gap-2.5"
+              nameClassName="truncate text-[15px] font-semibold"
+            />
           </Link>
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggleButton />

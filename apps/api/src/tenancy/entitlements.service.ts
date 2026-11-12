@@ -14,6 +14,7 @@ import type { Db } from '../db/connection';
 import { clients, documents, plans, tenants, users } from '../db/schema';
 import { today } from '../common/db-helpers';
 import { PlatformSettingsService } from './platform-settings.service';
+import { StatsCacheService } from '../stats/stats-cache.service';
 
 export const REQUIRES_MODULE = 'tenancy:requires-module';
 
@@ -48,6 +49,7 @@ export class EntitlementsService {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly settings: PlatformSettingsService,
+    private readonly stats: StatsCacheService,
   ) {}
 
   invalidate(): void {
@@ -141,7 +143,9 @@ export class EntitlementsService {
   async assertCanAddClient(tenantId: string): Promise<void> {
     const { limits } = await this.plan(tenantId);
     if (limits.maxActiveClients === null) return;
-    const used = await this.activeClientCount(tenantId);
+    // Counting stops at the limit: "is it reached?" needs no more than that,
+    // whatever the size of the consultancy.
+    const used = await this.activeClientCount(tenantId, limits.maxActiveClients);
     if (used >= limits.maxActiveClients) {
       throw new ForbiddenException(
         `Your plan allows ${limits.maxActiveClients} active clients. Archive finished clients or upgrade the plan.`,
@@ -152,7 +156,9 @@ export class EntitlementsService {
   async assertStorageFor(tenantId: string, bytes: number): Promise<void> {
     const { limits } = await this.plan(tenantId);
     if (limits.storageGb === null) return;
-    const used = await this.storageBytes(tenantId);
+    // The figure the menu shows (stats cache): exact for a consultancy of
+    // normal size, a few seconds behind for one whose total takes long to add up.
+    const used = (await this.usage(tenantId)).storageBytes;
     if (used + bytes > limits.storageGb * 1024 ** 3) {
       throw new ForbiddenException(
         `Your consultancy has used its ${limits.storageGb} GB of document storage. Ask the platform administrator for more space.`,
@@ -161,26 +167,33 @@ export class EntitlementsService {
   }
 
   async entitlements(tenantId: string): Promise<Entitlements> {
-    const p = await this.plan(tenantId);
-    // Every page asks for this to build its menu, so the three usage figures
-    // travel in one round trip - the same three queries, as subqueries.
-    const [usage] = await this.db
-      .select({
-        staff: sql<number>`${this.staffCountQuery(tenantId)}`,
-        activeClients: sql<number>`${this.activeClientCountQuery(tenantId)}`,
-        storageBytes: sql<number>`${this.storageBytesQuery(tenantId)}`,
-      })
-      .from(tenants)
-      .where(eq(tenants.id, tenantId))
-      .limit(1);
-    return {
-      ...p,
-      usage: {
-        staff: usage?.staff ?? 0,
-        activeClients: usage?.activeClients ?? 0,
-        storageBytes: Number(usage?.storageBytes ?? 0),
-      },
-    };
+    const [p, usage] = await Promise.all([this.plan(tenantId), this.usage(tenantId)]);
+    return { ...p, usage };
+  }
+
+  /**
+   * What the consultancy uses of its plan. Every page asks for this to build
+   * its menu, and two of the three figures count or add up every client and
+   * document, so they come through the stats cache: one primary-key read per
+   * page, recomputed (in one round trip) only after something changed.
+   */
+  private usage(tenantId: string): Promise<Entitlements['usage']> {
+    return this.stats.get(tenantId, 'usage', async () => {
+      const [row] = await this.db
+        .select({
+          staff: sql<number>`${this.staffCountQuery(tenantId)}`,
+          activeClients: sql<number>`${this.activeClientCountQuery(tenantId)}`,
+          storageBytes: sql<number>`${this.storageBytesQuery(tenantId)}`,
+        })
+        .from(tenants)
+        .where(eq(tenants.id, tenantId))
+        .limit(1);
+      return {
+        staff: row?.staff ?? 0,
+        activeClients: row?.activeClients ?? 0,
+        storageBytes: Number(row?.storageBytes ?? 0),
+      };
+    });
   }
 
   private async staffCount(tenantId: string): Promise<number> {
@@ -188,14 +201,19 @@ export class EntitlementsService {
     return row?.n ?? 0;
   }
 
-  private async activeClientCount(tenantId: string): Promise<number> {
-    const [row] = await this.activeClientCountQuery(tenantId);
+  /** Active clients, counted up to `upTo` - enough to compare with a limit. */
+  private async activeClientCount(tenantId: string, upTo: number): Promise<number> {
+    const [row] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(
+        this.db
+          .select({ one: sql`1` })
+          .from(clients)
+          .where(and(eq(clients.tenantId, tenantId), eq(clients.archived, false)))
+          .limit(Math.max(0, upTo))
+          .as('counted'),
+      );
     return row?.n ?? 0;
-  }
-
-  private async storageBytes(tenantId: string): Promise<number> {
-    const [row] = await this.storageBytesQuery(tenantId);
-    return Number(row?.n ?? 0);
   }
 
   private staffCountQuery(tenantId: string) {

@@ -29,6 +29,7 @@ import { PasswordLinksService } from '../auth/password-links.service';
 import { EntitlementsService } from '../tenancy/entitlements.service';
 import { DB } from '../db/database.module';
 import type { Db } from '../db/connection';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { cases, clients, consultants, staffRoles, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { CasesService } from '../cases/cases.service';
@@ -193,13 +194,9 @@ export class ClientsService {
     }
 
     const where = and(...conditions.filter(Boolean));
+    const page = clampPage(query.page, query.pageSize);
 
-    const countQuery = this.db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(clients)
-      .where(where);
-
-    const [[totalRow], rows] = await Promise.all([countQuery, this.db
+    const [count, rows] = await Promise.all([countCapped(this.db, this.db.select({ one: sql`1` }).from(clients).where(where)), this.db
       .select({
         id: clients.id,
         fullName: clients.fullName,
@@ -224,8 +221,7 @@ export class ClientsService {
       .where(where)
       .orderBy(...this.orderBy(query.sort))
       .limit(query.pageSize)
-      .offset((query.page - 1) * query.pageSize)]);
-    const total = totalRow?.n ?? 0;
+      .offset((page - 1) * query.pageSize)]);
 
     const primaryCases = await this.loadCases(
       rows.map((r) => r.primaryCaseId).filter((v): v is string => Boolean(v)),
@@ -248,13 +244,7 @@ export class ClientsService {
       daysSinceActivity: daysSince(r.lastActivityAt),
     }));
 
-    return {
-      items,
-      page: query.page,
-      pageSize: query.pageSize,
-      total,
-      totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
-    };
+    return paged(items, page, query.pageSize, count);
   }
 
   async findOne(actor: AuthUser, clientId: string) {

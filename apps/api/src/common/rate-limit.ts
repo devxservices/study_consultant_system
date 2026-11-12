@@ -104,3 +104,16 @@ export class RateLimitGuard implements CanActivate {
     return true;
   }
 }
+
+/**
+ * Takes one token for `key`; when the bucket is empty, refuses with 429 and a
+ * Retry-After saying when to come back. For guards with their own, tighter
+ * budget than the account-wide one above.
+ */
+export function spendOrRefuse(buckets: TokenBuckets, key: string, res: Response, message: string): void {
+  const wait = buckets.take(key);
+  if (wait > 0) {
+    res.setHeader('Retry-After', String(Math.max(1, Math.ceil(wait / 1000))));
+    throw new HttpException(message, HttpStatus.TOO_MANY_REQUESTS);
+  }
+}

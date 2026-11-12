@@ -9,12 +9,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { eq } from 'drizzle-orm';
-import { HOST, OUTBOX, PASSWORD, as, call, db, fx, schema, setPermission, signIn, startApp, stopApp } from './harness';
+import sharp from 'sharp';
+import { HOST, OUTBOX, PASSWORD, appGet, as, call, db, fx, schema, session, setPermission, signIn, startApp, stopApp, upload } from './harness';
 
 before(startApp);
 after(stopApp);
 
 const dns = require('../src/tenancy/domain-dns') as typeof import('../src/tenancy/domain-dns');
+const { PdfService } = require('../src/finance/pdf.service') as typeof import('../src/finance/pdf.service');
 
 /** Every email sent to someone, oldest first, with quoted-printable undone. */
 function mailsTo(email: string): string[] {
@@ -286,6 +288,172 @@ describe('a consultancy’s own white label', () => {
     assert.equal(site.body.tenant.contactEmail, 'hello@alpha.test');
     const bravo = await call('GET', '/tenancy/current', { host: HOST.bravo });
     assert.notEqual(bravo.body.tenant.name, 'Alpha Study Abroad');
+  });
+
+  test('the full logo is its own slot: uploaded, served publicly, removed, and never touches the icon', async () => {
+    // The smallest real PNG: files are judged by their bytes, not their name.
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    const before = await as('alphaManager')('GET', '/tenancy/branding');
+    assert.equal(before.body.fullLogoUrl, null);
+    const icon = before.body.logoUrl;
+
+    const up = await upload('alphaManager', '/tenancy/branding/logo/full', {}, { name: 'wide.png', type: 'image/png', bytes: png });
+    assert.equal(up.status, 201);
+    assert.match(up.body.fullLogoUrl, /^\/api\/tenancy\/logo\/[0-9a-f-]+\/full\?v=/);
+    assert.equal(up.body.logoUrl, icon, 'the icon is untouched');
+
+    const site = await call('GET', '/tenancy/current', { host: HOST.alpha });
+    assert.equal(site.body.tenant.fullLogoUrl, up.body.fullLogoUrl, 'the sign-in page and menu see it at once');
+    const served = await call('GET', up.body.fullLogoUrl.replace(/^\/api/, ''), { host: HOST.alpha });
+    assert.equal(served.status, 200, 'served before anyone signs in');
+    assert.equal(served.headers.get('content-type'), 'image/png');
+    assert.equal(served.headers.get('cache-control'), 'public, max-age=31536000, immutable', 'a versioned URL is cached for good');
+    const meta = await sharp(served.raw).metadata();
+    assert.deepEqual([meta.format, meta.width, meta.height], ['png', 1, 1], 'a tiny logo is never enlarged');
+
+    const svg = await upload('alphaManager', '/tenancy/branding/logo/full', {}, {
+      name: 'wide.svg',
+      type: 'image/svg+xml',
+      bytes: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
+    });
+    assert.equal(svg.status, 400, 'never SVG, which can carry script');
+    assert.equal((await upload('alphaConsultant', '/tenancy/branding/logo/full', {}, { name: 'w.png', type: 'image/png', bytes: png })).status, 403);
+
+    const removed = await as('alphaManager')('DELETE', '/tenancy/branding/logo/full');
+    assert.equal(removed.status, 200);
+    assert.equal(removed.body.fullLogoUrl, null);
+    assert.equal(removed.body.logoUrl, icon);
+    assert.equal((await call('GET', up.body.fullLogoUrl.replace(/^\/api/, ''), { host: HOST.alpha })).status, 404);
+  });
+
+  test('logos are stored the way they are shown: decoded, trimmed, sized, stripped', async () => {
+    const fetchImage = async (url: string) => {
+      const res = await call('GET', url.replace(/^\/api/, ''), { host: HOST.alpha });
+      assert.equal(res.status, 200);
+      return { res, meta: await sharp(res.raw).metadata() };
+    };
+    // A 3000 x 600 export whose artwork (2000 x 400) sits in a transparent margin.
+    const wide = await sharp({ create: { width: 3000, height: 600, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+      .composite([{ input: { create: { width: 2000, height: 400, channels: 4, background: { r: 20, g: 90, b: 200, alpha: 1 } } }, left: 500, top: 100 }])
+      .png()
+      .toBuffer();
+    const full = await upload('alphaManager', '/tenancy/branding/logo/full', {}, { name: 'wide.png', type: 'image/png', bytes: wide });
+    assert.equal(full.status, 201);
+    const f = await fetchImage(full.body.fullLogoUrl);
+    assert.deepEqual([f.meta.width, f.meta.height], [1200, 240], 'margin trimmed, then fitted inside 1200 x 300');
+    assert.ok(f.res.raw.length < wide.length, 'smaller than what was sent');
+
+    // With only the full logo, documents carry it (laid out wide) rather than nothing.
+    const pdfs = appGet<InstanceType<typeof PdfService>>(PdfService);
+    const wideBrand = await pdfs.brand(fx.alpha.id);
+    assert.ok(wideBrand.logo);
+    assert.equal(wideBrand.logoWide, true);
+    const cert = await pdfs.courseCertificate(fx.alpha.id, {
+      number: 'C-1', studentName: 'Test Student', courseName: 'IELTS', batchCode: 'B1',
+      from: '2026-01-01', to: '2026-02-01', attendancePercent: 90, completedOn: '2026-02-01',
+    });
+    assert.equal(cert.subarray(0, 4).toString(), '%PDF');
+    assert.ok(cert.includes('/Subtype /Image'), 'the logo is drawn');
+
+    // A photo-like JPEG, not square, carrying EXIF.
+    const photo = await sharp({ create: { width: 900, height: 600, channels: 3, background: { r: 200, g: 40, b: 40 } } })
+      .composite([{ input: { create: { width: 300, height: 300, channels: 3, background: { r: 255, g: 255, b: 255 } } }, left: 300, top: 150 }])
+      .jpeg()
+      .withMetadata({ exif: { IFD0: { Copyright: 'secret-gps-and-camera' } } })
+      .toBuffer();
+    assert.ok((await sharp(photo).metadata()).exif, 'the upload really carries EXIF');
+    const icon = await upload('alphaManager', '/tenancy/branding/logo', {}, { name: 'photo.jpg', type: 'image/jpeg', bytes: photo });
+    assert.equal(icon.status, 201);
+    const i = await fetchImage(icon.body.logoUrl);
+    assert.deepEqual([i.meta.format, i.meta.width, i.meta.height], ['png', 256, 256], 'a 256 px square PNG');
+    assert.equal(i.meta.exif, undefined, 'metadata stripped');
+    assert.equal((await pdfs.brand(fx.alpha.id)).logoWide, false, 'the square icon is preferred on documents');
+
+    // The iPhone home-screen icon: 180 px, opaque.
+    const site = await call('GET', '/tenancy/current', { host: HOST.alpha });
+    assert.match(site.body.tenant.touchIconUrl, /\/apple\?v=/);
+    const t = await fetchImage(site.body.tenant.touchIconUrl);
+    assert.deepEqual([t.meta.width, t.meta.height, t.meta.hasAlpha], [180, 180, false]);
+
+    // Starts like a PNG, is not one.
+    const fake = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.alloc(2048, 7)]);
+    const bad = await upload('alphaManager', '/tenancy/branding/logo/full', {}, { name: 'fake.png', type: 'image/png', bytes: fake });
+    assert.equal(bad.status, 400);
+    assert.match(bad.body.fieldErrors.file, /could not be read/);
+
+    await as('alphaManager')('DELETE', '/tenancy/branding/logo');
+    await as('alphaManager')('DELETE', '/tenancy/branding/logo/full');
+    const after = await call('GET', '/tenancy/current', { host: HOST.alpha });
+    assert.equal(after.body.tenant.touchIconUrl, null);
+  });
+
+  test('logo uploads hold up against abuse: size, extra parts, pixel bombs, hidden payloads, other sites', async () => {
+    // Run as the platform admin on Bravo, so this does not spend Alpha's change budget.
+    const url = `/admin/tenants/${fx.bravo.id}/logo`;
+    const solid = (w: number, h: number) =>
+      sharp({ create: { width: w, height: h, channels: 3, background: { r: 10, g: 120, b: 60 } } }).png().toBuffer();
+
+    // Over 5 MB: the upload is cut off while it is still arriving.
+    const huge = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.alloc(5 * 1024 * 1024 + 1)]);
+    assert.equal((await upload('root', url, {}, { name: 'big.png', type: 'image/png', bytes: huge })).status, 413);
+
+    // Anything but the one file part.
+    const extra = await upload('root', url, { note: 'x' }, { name: 'a.png', type: 'image/png', bytes: await solid(8, 8) });
+    assert.equal(extra.status, 400, 'an extra form field is refused');
+
+    // A small file that unpacks into 25 million pixels.
+    const bomb = await solid(5000, 5000);
+    assert.ok(bomb.length < 5 * 1024 * 1024, `the bomb itself is small (${bomb.length} bytes)`);
+    const bombed = await upload('root', url, {}, { name: 'bomb.png', type: 'image/png', bytes: bomb });
+    assert.equal(bombed.status, 400);
+    assert.match(bombed.body.fieldErrors.file, /4096/);
+
+    // A real PNG carrying a script after its last chunk: whatever comes back has none of it.
+    const payload = '<html><script>alert(document.cookie)</script></html>';
+    const polyglot = Buffer.concat([await solid(64, 64), Buffer.from(payload)]);
+    const up = await upload('root', url, {}, { name: 'logo.png', type: 'image/png', bytes: polyglot });
+    if (up.status === 201) {
+      const served = await call('GET', up.body.logoUrl.replace(/^\/api/, ''), { host: HOST.bravo });
+      assert.equal(served.status, 200);
+      assert.ok(!served.raw.includes('<script'), 'the hidden script does not survive re-encoding');
+      assert.equal(served.headers.get('content-type'), 'image/png');
+      assert.equal(served.headers.get('x-content-type-options'), 'nosniff');
+      assert.match(served.headers.get('content-security-policy') ?? '', /sandbox/, 'opened on its own, it still runs nothing');
+      await as('root')('DELETE', url);
+    } else {
+      assert.equal(up.status, 400, 'or it is refused outright');
+    }
+
+    // A write from another site's page, with the manager's cookie, is refused.
+    const form = new FormData();
+    form.append('file', new Blob([await solid(8, 8)], { type: 'image/png' }), 'a.png');
+    const forged = await call('POST', '/tenancy/branding/logo', {
+      host: HOST.bravo,
+      session: session.bravoManager,
+      form,
+      headers: { origin: 'https://evil.example' },
+    });
+    assert.equal(forged.status, 403);
+
+    // Only a manager, and only their own consultancy: the id never comes from the request.
+    for (const who of ['bravoConsultant', 'bravoClient'] as const) {
+      assert.equal((await upload(who, '/tenancy/branding/logo', {}, { name: 'a.png', type: 'image/png', bytes: await solid(8, 8) })).status, 403, who);
+    }
+    assert.equal((await upload('bravoManager', `/admin/tenants/${fx.alpha.id}/logo`, {}, { name: 'a.png', type: 'image/png', bytes: await solid(8, 8) })).status, 403, 'a manager cannot use the admin route');
+  });
+
+  test('logo changes are rate limited per person: ten at once, then 429 with Retry-After', async () => {
+    for (let i = 0; i < 10; i++) {
+      assert.equal((await as('bravoManager')('DELETE', '/tenancy/branding/logo/full')).status, 200, `change ${i + 1}`);
+    }
+    const limited = await as('bravoManager')('DELETE', '/tenancy/branding/logo/full');
+    assert.equal(limited.status, 429);
+    assert.ok(Number(limited.headers.get('retry-after')) > 0);
+    assert.match(limited.body.message, /Too many logo changes/);
+    assert.equal((await as('alphaManager')('GET', '/tenancy/branding')).status, 200, 'everything else, and everyone else, carries on');
   });
 
   test('a subdomain needs one CNAME to the consultancy’s own address; a root domain needs an A record and the TXT', async () => {

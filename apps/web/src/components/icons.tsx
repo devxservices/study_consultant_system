@@ -292,13 +292,6 @@ export const IconLock = (p: IconProps) => (
   </Icon>
 );
 
-export const IconSidebar = (p: IconProps) => (
-  <Icon {...p}>
-    <rect x="3" y="4" width="18" height="16" rx="2.5" />
-    <path d="M9 4v16M14.5 10 12.5 12l2 2" />
-  </Icon>
-);
-
 export const IconUserPlus = (p: IconProps) => (
   <Icon {...p}>
     <path d="M15 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-4A4.5 4.5 0 0 0 2 18.5V20" />
@@ -446,7 +439,12 @@ export const IconUniversity = (p: IconProps) => (
 export const NAV_ICON: Record<string, (p: IconProps) => React.JSX.Element> = {
   '/overview/roles': IconKey,
   '/overview/branding': IconStar,
-  '/partner/account': IconUser,
+  // The account page, at the sidebar's foot of every portal.
+  '/partner/account': IconSettings,
+  '/overview/account': IconSettings,
+  '/desk/account': IconSettings,
+  '/admin/account': IconSettings,
+  '/portal/account': IconSettings,
   '/overview/documents': IconFolder,
   '/desk/documents': IconFolder,
   '/overview/workflows': IconFlow,

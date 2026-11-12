@@ -101,12 +101,6 @@ export class StuckSweepService implements OnModuleInit, OnModuleDestroy {
    * can both report something truthful.
    */
   async sweep(tenantId?: string): Promise<number> {
-    const branches = Object.values(STAGE_DEFINITIONS)
-      .map((d) => `when '${d.key}' then interval '${d.stuckAfterDays} days'`)
-      .join(' ');
-    // The stage's own limit from its workflow; the built-in ones as fallback.
-    const threshold = sql.raw(`coalesce(${cases.stageSlaDays.name} * interval '1 day', (case ${cases.currentStage.name} ${branches} end))`);
-
     const rows = await this.db
       .select({
         id: cases.id,
@@ -131,7 +125,9 @@ export class StuckSweepService implements OnModuleInit, OnModuleDestroy {
           tenantId ? eq(cases.tenantId, tenantId) : undefined,
           eq(cases.status, 'active'),
           ne(cases.currentStage, 'closed'),
-          sql`${cases.stageEnteredAt} < now() - ${threshold}`,
+          // Past the stage's own limit from its workflow, else the built-in
+          // one: stored as stuck_at, the same test as every list and badge.
+          sql`${cases.stuckAt} < now()`,
           // The episode guard: nothing raised for this case since it entered
           // the stage it is currently sitting in.
           sql`not exists (

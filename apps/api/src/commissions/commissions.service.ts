@@ -56,7 +56,8 @@ import { RemindersService } from '../reminders/reminders.service';
 import { AutomationService, type AutomationEvent } from '../workflows/automation.service';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
 import { staffCan } from '../auth/permissions';
-import { addDays, iso, isoOrNull, page, today, withDocumentNumber } from '../common/db-helpers';
+import { addDays, iso, isoOrNull, today, withDocumentNumber } from '../common/db-helpers';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { permissionHolders } from '../common/permission-holders';
 import { assertMoneyAccount, liveEntryFor, postEntry, reverseEntry } from '../finance/journal';
 import { LedgerService } from '../finance/ledger.service';
@@ -173,13 +174,17 @@ export class CommissionsService implements OnModuleInit {
         break;
     }
     const where = and(...conds);
-    const [[count], ids] = await Promise.all([
-      this.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(commissions)
-        .innerJoin(institutions, eq(institutions.id, commissions.institutionId))
-        .leftJoin(clients, eq(clients.id, commissions.clientId))
-        .where(where),
+    const pageNo = clampPage(q.page, q.pageSize);
+    const [count, ids] = await Promise.all([
+      countCapped(
+        this.db,
+        this.db
+          .select({ one: sql`1` })
+          .from(commissions)
+          .innerJoin(institutions, eq(institutions.id, commissions.institutionId))
+          .leftJoin(clients, eq(clients.id, commissions.clientId))
+          .where(where),
+      ),
       this.db
         .select({ id: commissions.id })
         .from(commissions)
@@ -188,9 +193,9 @@ export class CommissionsService implements OnModuleInit {
         .where(where)
         .orderBy(sql`${commissions.expectedOn} asc nulls last`, desc(commissions.createdAt))
         .limit(q.pageSize)
-        .offset((q.page - 1) * q.pageSize),
+        .offset((pageNo - 1) * q.pageSize),
     ]);
-    return page(await this.views(ids.map((i) => i.id)), count?.n ?? 0, q.page, q.pageSize);
+    return paged(await this.views(ids.map((i) => i.id)), pageNo, q.pageSize, count);
   }
 
   async get(actor: AuthUser, id: string): Promise<CommissionView> {

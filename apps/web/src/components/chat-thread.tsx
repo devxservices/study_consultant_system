@@ -307,7 +307,7 @@ export function ChatThread({
             type="button"
             onClick={() => void send()}
             disabled={!draft.trim()}
-            className="press h-[38px] shrink-0 rounded-lg bg-brand-600 px-3.5 text-[14px] font-medium text-white hover:brightness-[0.93] disabled:opacity-40"
+            className="press h-[38px] shrink-0 rounded-full bg-brand-600 px-3.5 text-[14px] font-semibold text-white hover:brightness-[0.93] disabled:opacity-40"
           >
             Send
           </button>

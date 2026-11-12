@@ -48,7 +48,8 @@ import { BillingService, type PaymentEvent } from '../billing/billing.service';
 import { liveEntryFor, postEntry, reverseEntry, type Tx } from '../finance/journal';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
 import { staffCan } from '../auth/permissions';
-import { iso, isUniqueViolation, page, today, withDocumentNumber } from '../common/db-helpers';
+import { iso, isUniqueViolation, today, withDocumentNumber } from '../common/db-helpers';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { qualified } from '../documents/drive-sql';
 import { PartnersService, type PartnerRow } from './partners.service';
 
@@ -658,17 +659,18 @@ export class PartnerEarningsService implements OnModuleInit {
     if (partnerIds) conds.push(inArray(partnerEarnings.partnerId, partnerIds));
     if (q.status !== 'all') conds.push(eq(partnerEarnings.status, q.status));
     const where = and(...conds);
-    const [[count], ids] = await Promise.all([
-      this.db.select({ n: sql<number>`count(*)::int` }).from(partnerEarnings).where(where),
+    const pageNo = clampPage(q.page, q.pageSize);
+    const [count, ids] = await Promise.all([
+      countCapped(this.db, this.db.select({ one: sql`1` }).from(partnerEarnings).where(where)),
       this.db
         .select({ id: partnerEarnings.id })
         .from(partnerEarnings)
         .where(where)
         .orderBy(desc(partnerEarnings.earnedOn), desc(partnerEarnings.createdAt))
         .limit(q.pageSize)
-        .offset((q.page - 1) * q.pageSize),
+        .offset((pageNo - 1) * q.pageSize),
     ]);
-    return page(await this.views(ids.map((i) => i.id)), count?.n ?? 0, q.page, q.pageSize);
+    return paged(await this.views(ids.map((i) => i.id)), pageNo, q.pageSize, count);
   }
 
   async views(ids: string[]): Promise<PartnerEarningView[]> {

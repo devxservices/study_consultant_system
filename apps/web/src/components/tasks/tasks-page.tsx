@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Paginated, TaskCounts, TaskView } from '@crm/shared';
 import { apiFetch, qs } from '@/lib/api';
-import { Card, PageHeader, StatCard, cx } from '../ui';
+import { Card, PageHeader, StatCard, TAB_BAR, tabClass } from '../ui';
 import { IconAlert, IconClock, IconMegaphone, IconTasks } from '../icons';
 import { Pagination } from '../client-table';
 import { TaskComposer } from './task-composer';
@@ -68,19 +68,14 @@ export async function TasksPage({
       </Card>
 
       <Card className="mt-5 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 pt-3 sm:px-5">
-          <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label="Task views">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+          <nav className={TAB_BAR} aria-label="Task views">
             {VIEWS.map((v) => (
               <Link
                 key={v.key}
                 href={href({ view: v.key, page: undefined })}
                 aria-current={view === v.key ? 'page' : undefined}
-                className={cx(
-                  'whitespace-nowrap border-b-2 px-3 pb-2.5 pt-1 text-[13.5px] font-medium transition-colors',
-                  view === v.key
-                    ? 'border-brand-600 text-ink-950'
-                    : 'border-transparent text-ink-500 hover:text-ink-800',
-                )}
+                className={tabClass(view === v.key, 'sm')}
               >
                 {v.label}
                 {v.key === 'overdue' && counts.overdue > 0 && (
@@ -94,14 +89,14 @@ export async function TasksPage({
           </nav>
 
           {manager && assignees && (
-            <form className="pb-2.5" action={`${base}/tasks`}>
+            <form action={`${base}/tasks`}>
               <input type="hidden" name="view" value={view} />
               <label className="sr-only" htmlFor="assignee">Assigned to</label>
               <select
                 id="assignee"
                 name="assignee"
                 defaultValue={assignee ?? ''}
-                className="h-8 rounded-md border border-line-strong bg-paper px-2 text-[13px] text-ink-700"
+                className="h-8 rounded-full border border-transparent bg-ink-100/70 px-3.5 text-[13px] font-medium text-ink-700"
               >
                 <option value="">Everyone</option>
                 <option value="me">Me</option>

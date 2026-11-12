@@ -22,7 +22,8 @@ import { AREA, ConditionsEditor, FeesEditor, INPUT, MessagesEditor, TasksEditor 
 
 export const STAGE_COLOR_DOT: Record<WorkflowColor, string> = {
   slate: 'bg-ink-400',
-  blue: 'bg-info-500',
+  // A named hue, so a literal: the info token is the theme's purple.
+  blue: 'bg-[#5a75f4]',
   violet: 'bg-[#8b5cf6]',
   teal: 'bg-[#14b8a6]',
   green: 'bg-ok-500',

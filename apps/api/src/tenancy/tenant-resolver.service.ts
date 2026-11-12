@@ -66,11 +66,24 @@ export function platformHostFor(slug: string): string {
   return `${slug}.${tenancyConfig().platformDomain}`;
 }
 
+/**
+ * Every upload gets a new random key, so the tail of the key (12 hex digits of
+ * its UUID, extension dropped) versions the URL: a new logo is a new URL, and
+ * the old one can be cached for good.
+ */
+const versionOf = (key: string) => key.replace(/\.[a-z0-9]+$/i, '').slice(-12);
+
 export function logoUrlFor(tenant: Pick<TenantRow, 'id' | 'logoKey'>): string | null {
-  if (!tenant.logoKey) return null;
-  // The key changes on every upload, so a short slice of it busts caches.
-  const version = tenant.logoKey.slice(-8);
-  return `/api/tenancy/logo/${tenant.id}?v=${version}`;
+  return tenant.logoKey ? `/api/tenancy/logo/${tenant.id}?v=${versionOf(tenant.logoKey)}` : null;
+}
+
+export function fullLogoUrlFor(tenant: Pick<TenantRow, 'id' | 'fullLogoKey'>): string | null {
+  return tenant.fullLogoKey ? `/api/tenancy/logo/${tenant.id}/full?v=${versionOf(tenant.fullLogoKey)}` : null;
+}
+
+/** The icon on white at 180 px, for an iPhone home-screen shortcut. */
+export function touchIconUrlFor(tenant: Pick<TenantRow, 'id' | 'logoKey'>): string | null {
+  return tenant.logoKey ? `/api/tenancy/logo/${tenant.id}/apple?v=${versionOf(tenant.logoKey)}` : null;
 }
 
 export function toBranding(t: TenantRow): TenantBranding {
@@ -80,6 +93,8 @@ export function toBranding(t: TenantRow): TenantBranding {
     name: t.name,
     primaryColor: t.primaryColor,
     logoUrl: logoUrlFor(t),
+    fullLogoUrl: fullLogoUrlFor(t),
+    touchIconUrl: touchIconUrlFor(t),
     contactEmail: t.contactEmail,
     contactPhone: t.contactPhone,
   };

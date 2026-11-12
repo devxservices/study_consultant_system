@@ -24,7 +24,8 @@ import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
 import { seesAll } from '../auth/permissions';
-import { NIL_UUID, iso, isoOrNull, page, today, withDocumentNumber } from '../common/db-helpers';
+import { NIL_UUID, iso, isoOrNull, today, withDocumentNumber } from '../common/db-helpers';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { BillingService, type Priced } from '../billing/billing.service';
 import { PdfService } from './pdf.service';
 
@@ -67,8 +68,8 @@ export class QuotesService {
   }
 
   async list(actor: AuthUser, q: { status?: string; clientId?: string; page?: number; pageSize?: number }): Promise<Paginated<QuoteView>> {
-    const pageNo = Math.max(1, q.page ?? 1);
     const size = Math.min(100, Math.max(1, q.pageSize ?? 25));
+    const pageNo = clampPage(q.page ?? 1, size);
     const day = today();
     const conds: (SQL | undefined)[] = [this.scope(actor)];
     if (q.clientId) conds.push(eq(quotes.clientId, q.clientId));
@@ -76,8 +77,8 @@ export class QuotesService {
     else if (q.status === 'sent') conds.push(eq(quotes.status, 'sent'), sql`${quotes.validUntil} >= ${day}`);
     else if (q.status && q.status !== 'all') conds.push(eq(quotes.status, q.status));
     const where = and(...conds);
-    const [[count], rows] = await Promise.all([
-      this.db.select({ n: sql<number>`count(*)::int` }).from(quotes).innerJoin(clients, eq(clients.id, quotes.clientId)).where(where),
+    const [count, rows] = await Promise.all([
+      countCapped(this.db, this.db.select({ one: sql`1` }).from(quotes).innerJoin(clients, eq(clients.id, quotes.clientId)).where(where)),
       this.db
         .select({ id: quotes.id })
         .from(quotes)
@@ -88,7 +89,7 @@ export class QuotesService {
         .offset((pageNo - 1) * size),
     ]);
     const items = await Promise.all(rows.map((r) => this.view(r.id)));
-    return page(items, count?.n ?? 0, pageNo, size);
+    return paged(items, pageNo, size, count);
   }
 
   async get(actor: AuthUser, id: string): Promise<QuoteView> {

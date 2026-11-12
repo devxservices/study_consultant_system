@@ -1,6 +1,6 @@
 import { drizzle as drizzleNodePg, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
-import { PGlite } from '@electric-sql/pglite';
+import { PGlite, type Extension } from '@electric-sql/pglite';
 import { Pool } from 'pg';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -86,7 +86,13 @@ export async function createDb(): Promise<DbHandle> {
 
   let pglite: PGlite;
   try {
-    pglite = new PGlite(target);
+    // pg_trgm backs the "contains" searches (migration 0017). A real Postgres
+    // ships it; the embedded build loads it as a bundled extension. The
+    // package declares only ESM types for its contrib modules but ships a
+    // CommonJS build of each, which is the one this CommonJS app loads.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { pg_trgm } = require('@electric-sql/pglite/contrib/pg_trgm') as { pg_trgm: Extension };
+    pglite = new PGlite(target, { extensions: { pg_trgm } });
     await pglite.waitReady;
   } catch (err) {
     release();

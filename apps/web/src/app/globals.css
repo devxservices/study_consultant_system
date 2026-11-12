@@ -3,68 +3,73 @@
 /*
  * Design tokens.
  *
- * A navy navigation rail, a pale blue-grey canvas and white cards, one brand
- * colour (royal blue by default, or the consultancy's own), and three status
- * colours that mean exactly one thing each across every portal:
+ * A white sidebar and top bar, a near-white canvas and white cards with soft
+ * 18px corners, one warm brand colour (orange by default, or the consultancy's
+ * own), and three status colours that mean exactly one thing each across every
+ * portal:
  *   green  = verified / complete
  *   amber  = pending / needs attention
  *   red    = rejected / blocked
- * A tint is never decoration. Icon tiles and pills take the tone the number
- * already carries everywhere else - blue for a plain count, the status colour
- * for a status - so a red tile and a red pill always mean the same thing.
+ * The palette is sampled from the reference design: orange #fb9858, purple
+ * #7a75dd, cyan #03b1d4 and indigo #49579b, on #f8f8f8 with #0f0f17 headings.
+ * A status tint is never decoration: a red pill always means the same thing.
  */
 @theme {
-  /* Neutral ramp: navy-tinted greys, so text and hairlines belong to the same
-     family as the rail rather than reading as flat grey. */
-  --color-ink-950: #0f1b35;
-  --color-ink-900: #1c2945;
-  --color-ink-800: #2e3b58;
-  --color-ink-700: #46536e;
-  --color-ink-600: #5a6782;
-  --color-ink-500: #636e87;
-  --color-ink-400: #8a94aa;
-  --color-ink-300: #b6bece;
-  --color-ink-200: #d9dfe8;
-  --color-ink-100: #eaeef4;
-  --color-ink-50: #f5f7fa;
+  /* Neutral ramp: cool, barely-tinted greys, as in the reference. 500 is the
+     secondary text (4.8:1 on white), 400 the quiet hint. */
+  --color-ink-950: #0f0f17;
+  --color-ink-900: #1d1d27;
+  --color-ink-800: #33333e;
+  --color-ink-700: #4b4b57;
+  --color-ink-600: #5f5f6b;
+  --color-ink-500: #72717c;
+  --color-ink-400: #8b8b95;
+  --color-ink-300: #b6b6bf;
+  --color-ink-200: #dcdce2;
+  --color-ink-100: #ededf1;
+  --color-ink-50: #f6f6f8;
 
-  --color-canvas: #f3f5f9;
+  --color-canvas: #f8f8f8;
   --color-paper: #ffffff;
-  --color-line: #ebeef4;
-  --color-line-strong: #dce1ea;
+  --color-line: #efeff2;
+  --color-line-strong: #e2e2e7;
 
-  /* The navigation rail: deep navy, in both themes. */
-  --color-rail-950: #141f3a;
-  --color-rail-900: #182444;
-  --color-rail-800: #213052;
-  --color-rail-700: #2c3c63;
-  --color-rail-line: #22304f;
-  --color-rail-ink: #f1f4fb;
-  --color-rail-muted: #a3aecb;
-  --color-rail-dim: #7381a6;
+  /* The sidebar: white, like the cards, in the light theme. Labels are the
+     reference's quiet grey; the active item is the brand's. */
+  --color-rail-950: #ffffff;
+  --color-rail-900: #f6f6f8;
+  --color-rail-800: #ededf1;
+  --color-rail-700: #dcdce2;
+  --color-rail-line: #f0f0f3;
+  --color-rail-ink: #0f0f17;
+  --color-rail-muted: #6e7079;
+  --color-rail-dim: #80838f;
 
-  /* Brand - royal blue. Primary buttons, links and the active state. A
+  /* Brand - the reference's orange. 500 is the exact sampled colour, used for
+     every mark, line, outline and gradient. White text on it is only 2.2:1, so
+     600 - the button fill and active label - is a deeper step of the same hue
+     (3.1:1), and 700, for links and inline text, reaches 4.5:1. A
      consultancy's own colour replaces this whole ramp at request time
-     (lib/brand.ts). `600` carries white text at 5.3:1. */
-  --color-brand-900: #1f2f86;
-  --color-brand-800: #2639b0;
-  --color-brand-700: #2f48d4;
-  --color-brand-600: #3d5af1;
-  --color-brand-500: #5a75f4;
-  --color-brand-400: #8297f7;
-  --color-brand-200: #c8d2fc;
-  --color-brand-100: #e2e8fd;
-  --color-brand-50: #eff2fe;
+     (lib/brand.ts). */
+  --color-brand-900: #7a350b;
+  --color-brand-800: #9e440c;
+  --color-brand-700: #c2560f;
+  --color-brand-600: #e8702a;
+  --color-brand-500: #fb9858;
+  --color-brand-400: #fcb383;
+  --color-brand-200: #fcd5bb;
+  --color-brand-100: #fdebdf;
+  --color-brand-50: #fff5ee;
 
-  /* Information - "this is a count", a tag, a role. Always this blue, never
-     the consultancy's colour: a consultancy may brand itself green or red, and
-     an informational tag must never read as a status. */
-  --color-info-700: #2f48d4;
-  --color-info-600: #3d5af1;
-  --color-info-500: #5a75f4;
-  --color-info-200: #c8d2fc;
-  --color-info-100: #e2e8fd;
-  --color-info-50: #eff2fe;
+  /* Information - "this is a count", a tag, a role. The reference's purple,
+     never the consultancy's colour: a consultancy may brand itself green or
+     red, and an informational tag must never read as a status. */
+  --color-info-700: #5149b8;
+  --color-info-600: #6c66d6;
+  --color-info-500: #8078df;
+  --color-info-200: #cdc9f4;
+  --color-info-100: #e6e4fa;
+  --color-info-50: #f3f2fd;
 
   /* Verified / complete */
   --color-ok-700: #0a7a4a;
@@ -90,37 +95,43 @@
   --color-bad-100: #fcdfe1;
   --color-bad-50: #fdf0f1;
 
-  /* Chart series, in fixed order: blue, teal, coral. Fixed, not the brand, so
-     a consultancy's colour can never collide with a series. Validated with the
-     dataviz palette checker against the card surface in each theme, every
-     pair (lines cross): light worst colour-blind separation delta-E 8.4,
-     normal vision 28.6, all three >= 3:1 on white. Dark values below. A fourth
-     series is never added - it folds into "other" or becomes a second chart. */
-  --color-series-1: #3d5af1;
-  --color-series-2: #12a383;
-  --color-series-3: #f0645f;
+  /* Chart series, in the reference's fixed order: orange, cyan, purple, then
+     indigo and a light grey for a fourth and fifth category in bar lists.
+     Fixed, not the brand, so a consultancy's colour never shifts a series.
+     The reference's own orange (#fb9858) sits just past the lightness band a
+     chart mark needs on white, so series-1 is the same hue a step deeper.
+     Validated with the dataviz palette checker against the card, every pair:
+     light worst colour-blind separation delta-E 10.7, normal vision 17.3; the
+     orange and cyan are under 3:1, so every chart prints its values or offers
+     a table. Dark values below. */
+  --color-series-1: #f79555;
+  --color-series-2: #07b3d6;
+  --color-series-3: #8078df;
+  --color-series-4: #49579b;
+  --color-series-5: #e3e3e8;
 
-  /* Rubik, self-hosted from the app's own origin (app/fonts), so there is no
+  /* Inter, self-hosted from the app's own origin (app/fonts), so there is no
      third-party request and the app still works with no network. The system
      stack stands in, metric-matched, until it arrives. */
   --font-sans:
-    var(--font-rubik), 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial,
+    var(--font-inter), 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial,
     sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
+  /* Cards are `rounded-xl`: the reference's soft 18px corner. */
   --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
+  --radius-lg: 10px;
+  --radius-xl: 18px;
+  --radius-2xl: 22px;
 
-  /* Cards sit on a tinted canvas with a soft, navy-tinted lift. Shadows
-     separate planes; they never carry meaning. */
-  --shadow-card: 0 1px 2px rgb(15 27 53 / 0.04), 0 3px 14px -2px rgb(15 27 53 / 0.06);
-  --shadow-raise: 0 2px 6px rgb(15 27 53 / 0.05), 0 16px 32px -12px rgb(15 27 53 / 0.2);
-  --shadow-pop: 0 4px 12px rgb(15 27 53 / 0.07), 0 22px 44px -14px rgb(15 27 53 / 0.28);
-  --shadow-sticky: 0 1px 0 rgb(15 27 53 / 0.06), 0 8px 20px -14px rgb(15 27 53 / 0.25);
-  --shadow-tile: 0 1px 2px rgb(15 27 53 / 0.05), 0 2px 8px -2px rgb(15 27 53 / 0.06);
+  /* Cards barely lift off the canvas - the reference separates planes by
+     surface colour, with only a breath of shadow. Shadows never carry meaning. */
+  --shadow-card: 0 1px 2px rgb(17 17 26 / 0.025), 0 8px 28px -10px rgb(17 17 26 / 0.06);
+  --shadow-raise: 0 2px 6px rgb(17 17 26 / 0.04), 0 18px 36px -14px rgb(17 17 26 / 0.16);
+  --shadow-pop: 0 4px 12px rgb(17 17 26 / 0.06), 0 24px 48px -16px rgb(17 17 26 / 0.22);
+  --shadow-sticky: 0 1px 0 var(--color-line);
+  --shadow-tile: 0 1px 2px rgb(17 17 26 / 0.04), 0 2px 8px -2px rgb(17 17 26 / 0.05);
 
   --ease-smooth: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
@@ -133,7 +144,7 @@
  * to `var(--color-*)`, so a whole dark theme is a matter of redefining those
  * variables once - no component knows or cares which theme is live. The ramps
  * keep their meaning (50 = the subtlest surface tint, 950 = the strongest text)
- * and only their lightness is inverted.
+ * and only their lightness is inverted. The accents stay the reference's.
  */
 :root {
   color-scheme: light;
@@ -142,50 +153,50 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --color-ink-950: #f2f5fb;
-  --color-ink-900: #e2e7f0;
-  --color-ink-800: #cbd2df;
-  --color-ink-700: #b3bccd;
-  --color-ink-600: #9ca6b9;
-  --color-ink-500: #8691a7;
-  --color-ink-400: #6c778e;
-  --color-ink-300: #4b556b;
-  --color-ink-200: #333d53;
-  --color-ink-100: #253046;
-  --color-ink-50: #1a2338;
+  --color-ink-950: #f4f4f7;
+  --color-ink-900: #e4e4ea;
+  --color-ink-800: #cfcfd8;
+  --color-ink-700: #b6b6c1;
+  --color-ink-600: #9d9daa;
+  --color-ink-500: #888895;
+  --color-ink-400: #6e6e7b;
+  --color-ink-300: #4f4f5b;
+  --color-ink-200: #36363f;
+  --color-ink-100: #282830;
+  --color-ink-50: #202027;
 
-  --color-canvas: #0b1222;
-  --color-paper: #141c2f;
-  --color-line: #222c42;
-  --color-line-strong: #2e3a52;
+  --color-canvas: #121216;
+  --color-paper: #1a1a20;
+  --color-line: #26262e;
+  --color-line-strong: #32323b;
 
-  --color-rail-950: #0f1729;
-  --color-rail-900: #131c31;
-  --color-rail-800: #1b2540;
-  --color-rail-700: #26324f;
-  --color-rail-line: #1d2741;
-  --color-rail-ink: #eef2fa;
-  --color-rail-muted: #9aa6c2;
-  --color-rail-dim: #6b789b;
+  --color-rail-950: #1a1a20;
+  --color-rail-900: #202027;
+  --color-rail-800: #282830;
+  --color-rail-700: #36363f;
+  --color-rail-line: #26262e;
+  --color-rail-ink: #f4f4f7;
+  --color-rail-muted: #a1a1ad;
+  --color-rail-dim: #7c7c89;
 
-  /* Brand on dark: the fill stays saturated enough for white text (4.9:1);
-     the high steps become the light text used for links and active labels. */
-  --color-brand-900: #e6ebfe;
-  --color-brand-800: #cbd5fd;
-  --color-brand-700: #a9b8fb;
-  --color-brand-600: #4a63ec;
-  --color-brand-500: #6c84f5;
-  --color-brand-400: #8a9ef7;
-  --color-brand-200: #2b3a72;
-  --color-brand-100: #1f2b55;
-  --color-brand-50: #1a2445;
+  /* Brand on dark: the fill keeps white text at 3:1; the high steps become
+     the light text used for links and active labels. */
+  --color-brand-900: #fee3d1;
+  --color-brand-800: #fdcaa8;
+  --color-brand-700: #fdb487;
+  --color-brand-600: #e8722c;
+  --color-brand-500: #fb9858;
+  --color-brand-400: #f6a46e;
+  --color-brand-200: #55341c;
+  --color-brand-100: #3a2516;
+  --color-brand-50: #2a1d14;
 
-  --color-info-700: #a9b8fb;
-  --color-info-600: #7d93f7;
-  --color-info-500: #6c84f5;
-  --color-info-200: #2b3a72;
-  --color-info-100: #1f2b55;
-  --color-info-50: #1a2445;
+  --color-info-700: #bdb8f6;
+  --color-info-600: #9d97ee;
+  --color-info-500: #8a84e6;
+  --color-info-200: #3b3870;
+  --color-info-100: #29274a;
+  --color-info-50: #1f1e36;
 
   --color-ok-700: #6fdcaa;
   --color-ok-600: #34c486;
@@ -208,18 +219,20 @@
   --color-bad-100: #45191e;
   --color-bad-50: #2f1719;
 
-  /* The same three hues, stepped for the dark card and validated as a set:
-     worst colour-blind delta-E 8.4, normal vision 23.1, all >= 3:1. */
-  --color-series-1: #607af1;
-  --color-series-2: #0da081;
-  --color-series-3: #e3645e;
+  /* The same hues, stepped for the dark card and validated as a set: worst
+     colour-blind delta-E 12.3, normal vision 17.6, all four >= 3:1. */
+  --color-series-1: #d97533;
+  --color-series-2: #09a6c6;
+  --color-series-3: #7069d0;
+  --color-series-4: #5662a9;
+  --color-series-5: #3a3a44;
 
-  /* A hairline of light rides on every card: on a navy ground a shadow alone
+  /* A hairline of light rides on every card: on a dark ground a shadow alone
      barely separates two planes. */
-  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.035), 0 1px 2px rgb(0 0 0 / 0.45), 0 2px 12px rgb(0 0 0 / 0.22);
+  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.035), 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 12px rgb(0 0 0 / 0.2);
   --shadow-raise: 0 2px 6px rgb(0 0 0 / 0.45), 0 16px 32px -12px rgb(0 0 0 / 0.7);
   --shadow-pop: 0 4px 12px rgb(0 0 0 / 0.5), 0 22px 44px -14px rgb(0 0 0 / 0.75);
-  --shadow-sticky: 0 1px 0 rgb(0 0 0 / 0.5), 0 8px 20px -14px rgb(0 0 0 / 0.8);
+  --shadow-sticky: 0 1px 0 var(--color-line);
   --shadow-tile: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px -2px rgb(0 0 0 / 0.3);
 }
 
@@ -371,12 +384,6 @@
     transform: rotate(-4deg);
   }
 }
-@keyframes topbar-solid {
-  to {
-    background-color: color-mix(in oklab, var(--color-canvas) 82%, transparent);
-    box-shadow: var(--shadow-sticky);
-  }
-}
 
 @layer components {
   /* Horizontal scroll is contained to the table, never the page body. */
@@ -385,8 +392,7 @@
     overscroll-behavior-x: contain;
   }
 
-  /* The rail's own scrollbar, so a long nav does not paint a light gutter
-     down the middle of a dark plane. */
+  /* The sidebar's own scrollbar: thin, and only as dark as a hairline. */
   .rail-scroll {
     scrollbar-width: thin;
     scrollbar-color: var(--color-rail-700) transparent;
@@ -397,6 +403,85 @@
   .rail-scroll::-webkit-scrollbar-thumb {
     background: var(--color-rail-700);
     border-radius: 3px;
+  }
+
+  /* The sidebar's current destination, as in the reference: a wash of the
+     brand tint that starts at the sidebar's edge and fades out across it. */
+  .rail-active {
+    background: linear-gradient(
+      90deg,
+      var(--color-brand-100) 0%,
+      color-mix(in oklab, var(--color-brand-100) 45%, transparent) 45%,
+      transparent 85%
+    );
+  }
+
+  /* A consultancy's full logo is drawn for a white page; on the dark theme it
+     gets a white plate rather than vanishing into the sidebar. */
+  [data-theme='dark'] .brand-plate {
+    background: #fff;
+    padding: 5px 10px;
+    border-radius: 10px;
+  }
+
+  /*
+   * The headline figures: the reference's gradient cards, in its order -
+   * orange, purple, cyan - then indigo for a fourth. Each fades from its
+   * saturated colour on the left to a pale one on the right, with a glow of
+   * its own colour beneath. The colour follows the card's place in its row,
+   * so a row of four always reads as the reference does; status is carried by
+   * the badge on the icon, never by the card colour.
+   */
+  .kpi {
+    --kpi-from: #fa9958;
+    --kpi-to: #ffc6a0;
+    --kpi-glow: rgb(250 153 88 / 0.5);
+    color: #fff;
+    background: linear-gradient(90deg, var(--kpi-from), var(--kpi-to));
+    box-shadow: 0 14px 28px -16px var(--kpi-glow);
+  }
+  .kpi:nth-child(4n + 2 of .kpi) {
+    --kpi-from: #7a75dd;
+    --kpi-to: #9a95eb;
+    --kpi-glow: rgb(122 117 221 / 0.5);
+  }
+  .kpi:nth-child(4n + 3 of .kpi) {
+    --kpi-from: #03b1d4;
+    --kpi-to: #5ae1fc;
+    --kpi-glow: rgb(3 177 212 / 0.45);
+  }
+  .kpi:nth-child(4n + 4 of .kpi) {
+    --kpi-from: #49579b;
+    --kpi-to: #7783c4;
+    --kpi-glow: rgb(73 87 155 / 0.45);
+  }
+  [data-theme='dark'] .kpi {
+    box-shadow: 0 14px 28px -18px var(--kpi-glow);
+  }
+  /* A sparkline on a gradient card is drawn in white: its line (the only
+     stroked path - the wash beneath has none) and its end mark. */
+  .kpi-chart path[stroke],
+  .kpi-chart circle {
+    stroke: #fff;
+  }
+  .kpi-chart circle {
+    fill: #fff;
+    stroke: var(--kpi-from);
+  }
+  .kpi-chart stop {
+    stop-color: #fff;
+  }
+
+  /* A large brand surface - the client's hero, the sign-in panel: the KPI
+     card's fade, in the consultancy's own colour. */
+  .surface-brand {
+    color: #fff;
+    background: linear-gradient(
+      90deg,
+      var(--color-brand-500),
+      color-mix(in oklab, var(--color-brand-500) 55%, #fff)
+    );
+    box-shadow: 0 18px 36px -20px var(--color-brand-500);
   }
 
   /* A page arriving: its top-level blocks settle into place. Runs when the
@@ -526,25 +611,11 @@
     animation: fade-in 0.12s ease-out both;
   }
 
-  /* The top bar: transparent over the canvas at rest, frosted with a hairline
-     once content scrolls under it. Driven by the scroll position itself where
-     the browser supports scroll-linked animation - no scroll listener, no
-     JavaScript - and simply frosted everywhere else. */
+  /* The top bar: a white band across the content, as in the reference, with
+     a hairline where the canvas begins. */
   .topbar {
-    background-color: color-mix(in oklab, var(--color-canvas) 82%, transparent);
+    background-color: var(--color-paper);
     box-shadow: var(--shadow-sticky);
-    backdrop-filter: saturate(1.4) blur(12px);
-    -webkit-backdrop-filter: saturate(1.4) blur(12px);
-  }
-  /* At rest it is transparent; a page too short to scroll keeps it that way. */
-  @supports (animation-timeline: scroll()) {
-    .topbar {
-      background-color: transparent;
-      box-shadow: none;
-      animation: topbar-solid linear both;
-      animation-timeline: scroll(root);
-      animation-range: 0 48px;
-    }
   }
 
   .float {
@@ -567,10 +638,6 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-  /* Scroll-linked, not motion: it follows the reader's own scrolling. */
-  .topbar {
-    animation-duration: auto !important;
   }
 }
 

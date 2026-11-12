@@ -198,8 +198,22 @@ always for their own consultancy only).
 - **Add a consultancy** with its first manager, in one transaction. A retry
   with the same address is refused, never duplicated. Leave the manager's
   password empty and they are emailed a link to choose their own.
-- **Branding**: name, logo (PNG/JPG/WEBP — never SVG, which can carry script),
-  one brand colour and contact details. The colour becomes the whole `brand-*`
+- **Branding**: name, two logos (PNG/JPG/WEBP — never SVG, which can carry
+  script), one brand colour and contact details. The square **icon** is the
+  browser tab, the collapsed menu, the iPhone home-screen icon and the corner
+  of invoices; the wide **full logo** is the open menu, the sign-in page and
+  the client portal's header (and invoices, when there is no icon). Uploads
+  are stored the way they are shown (`tenancy/logo-image.ts`): decoded for
+  real, turned upright, stripped of metadata, trimmed of empty margin, the icon
+  padded to a square of at most 256 px and the full logo fitted inside
+  1200 × 300, as a palette PNG — a 320 KB export comes out around 45 KB.
+  Without an icon the tab and the menu show the consultancy's monogram (up to
+  two initials) on its brand colour: `/brand-icon` draws it from Inter Bold's
+  own outlines (`lib/monogram-glyphs.ts`) with the tile's proportions, so it is
+  the same mark as the menu's tile and needs no fonts on the server or the
+  visitor's machine. Without a full logo the icon and the whole name stand in.
+  In the dark theme the full logo sits on a white plate, since most are drawn
+  for a white page. The colour becomes the whole `brand-*`
   ramp at request time, derived in OKLCH, with the button shade clamped so white
   text on it stays readable (≥ 5:1) whatever colour is picked. Every email goes
   out under the consultancy's name, with its contact email as the reply-to.
@@ -892,6 +906,7 @@ npm run db:migrate  --workspace @crm/api
 npm run bench --workspace @crm/api                  # seeded data
 BENCH_SCALE=25 npm run bench --workspace @crm/api   # 25x the records
 BENCH_OUT=run.json npm run bench --workspace @crm/api
+BENCH_KEEP=1 npm run bench --workspace @crm/api     # keep the database (for EXPLAIN)
 ```
 
 `apps/api/test/perf.bench.ts` seeds a throwaway embedded database, optionally
@@ -975,10 +990,11 @@ identity read. Done safely (never reusing a read issued before a request
 arrived) it saved nothing measurable here, so it was not worth the added
 machinery on the authorisation path.
 
-Still proportional to the size of the consultancy, by design or not yet
-addressed: the inbox (it must rank every case with a conversation to find the
-newest 50), the dashboard figures, and the client CSV export, which writes
-every client. (The browser bundle noted here before is dealt with below.)
+What was still proportional to the size of the consultancy here - the inbox,
+the dashboard figures, the menu's badges and every list's count - is dealt
+with under "At ten million rows" below. The client CSV export still writes
+every client, by design. (The browser bundle noted here before is dealt with
+below.)
 
 ### The browser, with the redesign
 
@@ -1125,6 +1141,108 @@ round trips. In a busy consultancy almost every kept page will find a change
 and re-render - correct, and still shown at once, but it saves less work
 there than in a quiet one.
 
+### At ten million rows
+
+The fifth pass asked a different question: does a tab stay fast when a
+consultancy holds millions of clients, cases and documents? Measured with the
+API benchmark scaled up (`BENCH_SCALE=1000`: 43,000 clients, 69,000 invoices),
+the old code and the new on the same data, back to back
+(`.bench/scale-before-1000x.log`, `.bench/scale-after-1000x.log`), the answer
+was no - and the reason was rarely the page's own rows.
+
+| Median, 43,000 clients | Before | After |
+| --- | --- | --- |
+| The menu's plan usage, on every page | 122 ms | 4 ms |
+| The "Not moving" badge, on every manager page | 68 ms | 15 ms |
+| Manager dashboard: case health, KPIs, deadlines | 952, 419, 476 ms | 4, 4, 14 ms |
+| Consultant dashboard KPIs | 259 ms | 4 ms |
+| Inbox | 823 ms | 8 ms |
+| Invoice list | 740 ms | 34 ms |
+| Billing totals, revenue | 220, 129 ms | 4, 4 ms |
+| Team workload | 195 ms | 8 ms |
+| Client list | 64 ms | 14 ms |
+
+The "after" figures should not grow with the data, because each is a
+primary-key read, an index read of one page, or a count that stops at a fixed
+limit. Measured so far: the cached figures are the same at 200x (8,600
+clients) as at 1,000x, within a millisecond or two, where the "before" ones
+grew roughly in proportion; and EXPLAIN ANALYZE on the 1,000x data shows the
+list pages reading one page from their index (`test/perf.bench.ts`,
+`BENCH_KEEP=1` keeps the database for that).
+
+What changed (migration `0017_scale`):
+
+- **Every "newest first" index could not be read in order.** Drizzle writes
+  `.desc()` as `DESC NULLS LAST`; the queries say `ORDER BY ... DESC`, which in
+  Postgres is nulls *first*, and an index is only read in the order it was
+  built. So the client, document, audit, invoice and inbox lists each scanned
+  and sorted their whole table to show 25 rows. The indexes are now plain
+  `DESC` (`.desc().nullsFirst()` in the schema); the columns are never null
+  there, so no result changes. The client list's page query went from 148 ms
+  to 2 ms, the audit trail's from 18 ms to under 1.
+- **Consultancy-wide figures are kept, not recomputed** (`stats/`). Dashboard
+  totals, the menu's badges, plan usage, billing totals and the team's
+  workload read every case or client in scope; they now go through
+  `stats_cache`, one row per figure per scope, read back with one primary-key
+  lookup. A figure is fresh while nothing has changed since it was computed
+  (the `tenant_sync` marker) and it is under a minute old. When stale, a
+  cheap figure (under 40 ms - any consultancy of ordinary size) is recomputed
+  there and then, so the numbers stay exact; a dear one is answered from the
+  cache at once and recomputed in the background, at most once per interval
+  sized to its cost (five times it, 5 s to 5 min). Keys name the scope - the
+  consultancy, one consultant, one person - so no figure is ever shared beyond
+  the people who would have computed the same one. `STATS_CACHE=off` computes
+  everything live.
+- **"Is it stuck?" is a column.** `cases.stuck_at` - when the stage's limit
+  runs out - is kept by a trigger from the same limits as `STAGE_DEFINITIONS`
+  (`analytics/stuck-thresholds.ts`, which rewrites the trigger at boot if the
+  limits ever change). The "Not moving" list, its badge, the team's counts and
+  the nightly sweep all test `stuck_at < now()` against a partial index.
+- **The inbox walks conversations newest first.** `cases.last_message_at`,
+  kept by a trigger on `messages`, is indexed; the inbox reads its 50 threads
+  instead of ranking every conversation.
+- **Lists count to 10,000 and say "10,000+".** A list's own page is an index
+  read, but "1-25 of N" counted every match. `common/paging.ts` counts at most
+  `COUNT_CAP + 1` rows and serves no page beyond that range (an OFFSET of nine
+  million reads nine million rows); `Paginated.totalCapped` tells the web app
+  to print `formatTotal()`. Badges count to 1,000 (they show "99+").
+- **Search uses trigram indexes** (`pg_trgm`) on client names, emails and
+  phones, so "contains" searches of three characters or more are answered
+  from the index. The embedded database loads the extension too.
+- Smaller ones: a consultant's own workload (`/consultants/me`, on every page
+  of their desk) counts their own records instead of the whole team's; plan
+  limits count only as far as the limit; the payments ledger names the
+  payment's consultancy so its date index applies; the unread badges use an
+  index of unread messages.
+
+Each cached figure costs, on the 43,000-client data, from 11 ms (task
+badges) to about one second (case health) to compute - paid on the very first
+visit to a scope and, after that, only in the background for dear figures.
+
+Still proportional to the size of the consultancy:
+
+- **The client list sorted by "stalest" or "stage", and the drive's
+  "students" view** (165, 443 and 485 ms here): each sorts every client by a
+  value computed from their cases or documents. Making them constant needs
+  that value kept on the client by a trigger, as `stuck_at` is.
+- **A consultant's review queue** (225 ms): their scope is "on my cases or my
+  clients", which no single index answers, so the queue walks the
+  consultancy's pending documents to find theirs.
+- **Searching for a very common word** (151 ms for a term matching a quarter of
+  all clients): a trigram index finds every match before the count stops.
+- **The client CSV export**, which writes every client by design, and the
+  course enrolment list's "owing" total.
+- **The first computation of a dear figure.** Case health took a second on
+  this data; on ten million rows it would take far longer, once per scope,
+  and its background refreshes would keep the database busy that long.
+
+Deploying `0017_scale` to a large existing database: it rewrites every case
+once (to fill `stuck_at` and `last_message_at`) and rebuilds the indexes
+without `CONCURRENTLY`, which blocks writes to those tables while it runs -
+seconds for the databases this app has today, longer at millions of rows, so
+run it in a quiet window. It needs `CREATE EXTENSION pg_trgm`, which the
+database owner may run on any managed Postgres.
+
 ---
 
 ## Running it for many people
@@ -1149,6 +1267,33 @@ listed under "needs".
   web server every request comes from that server, so a per-IP budget would be
   one bucket for everyone. Unauthenticated traffic belongs at the edge proxy;
   sign-in keeps its own tighter throttle. Off under `NODE_ENV=test`.
+- **Logos, the one upload anyone can then fetch without signing in**:
+  - *Changes* (`tenancy/logo-throttle.guard.ts`): uploads and removals get
+    their own budget, far under the account ceiling because each upload is
+    decoded and re-encoded - 10 at once per person then one every 3 minutes,
+    and 20 at once per consultancy (managers and the platform admin together)
+    then one a minute. Checked before the file is read; `429` with
+    `Retry-After`.
+  - *Size* (`LOGO_MAX_BYTES`, `LOGO_MAX_PIXELS` in `@crm/shared`): 5 MB, cut
+    off while still arriving, and 4096 × 4096 pixels, so a small file cannot
+    unpack into a gigantic image. One part per request, the file; an extra
+    field is refused. The branding page says so before uploading.
+  - *Content*: judged by its bytes (PNG, JPG, WEBP; never SVG), then decoded
+    for real and re-encoded, so a file that only looks like an image is
+    refused and anything hidden in one (a script after the last chunk, EXIF
+    with GPS) is not in the file served. At most two images are decoded at
+    once, with a short queue, then `503`.
+  - *Serving*: the public logo routes are limited per visitor address (120 at
+    once, 240 a minute - the browser keeps each file for a year), kept in
+    memory once read (16 MB, so a flood costs no storage reads), and sent as
+    `image/*` with `nosniff` and a sandboxing CSP. The web's `/brand-icon`
+    routes accept only a monogram's worth of input (1-2 letters, a hex
+    colour, 32 px), keep what they draw, and are limited the same way
+    (`lib/icon-guard.ts`). Per-address limits need the edge proxy's
+    `X-Real-IP`, which both Caddyfiles set from the real client.
+  - Tested in `accounts.test.ts` and `rate-limit.test.ts`: oversize (`413`),
+    extra field, a 25-megapixel bomb, a PNG with a script appended, a forged
+    cross-site upload (`403`), the wrong roles, and each budget.
 - **Pooled database connections**, `DB_POOL_MAX` per instance, and a bounded
   wait for one, `DB_CONNECT_TIMEOUT_MS` (10 s): under a saturated database a
   request fails instead of queueing without limit. Keep `DB_POOL_MAX` times
@@ -1163,8 +1308,9 @@ listed under "needs".
   very large consultancy writing many times a second that row is contended,
   and the marker could move to Redis behind the same `SyncService`.
 - **Static assets are content-hashed** (`/_next/static`, served with a
-  year-long immutable cache header), so a CDN in front serves them; logos are
-  public with a one-day cache and a version in the URL. Pages and API
+  year-long immutable cache header), so a CDN in front serves them; so are
+  logos and monogram icons, whose URLs carry a version that changes with every
+  upload (a logo URL without one gets a day). Pages and API
   responses are private and per person by design, so they are never shared
   between people.
 - **Queries are counted**, not guessed: both benchmarks above count every
@@ -1197,38 +1343,50 @@ instances, the size of the database, and the Redis adapter above.
 ## Design system
 
 Tokens live in `apps/web/src/app/globals.css` and nothing outside them is used.
-The look is a modern admin dashboard: a navy rail, a pale blue-grey canvas,
-white cards with tinted icon tiles, and a top bar of white tiles.
+The look follows a reference school-management dashboard, with its colours
+sampled from the image: a white sidebar and top bar, a `#f8f8f8` canvas, white
+cards with soft 18px corners, gradient headline cards, pill-shaped buttons and
+tabs, and Inter throughout.
 
-- **The brand colour is for what you can press**: primary buttons, links, the
-  active menu item, "New". Royal blue by default, or the consultancy's own
-  colour, set per tenant from `/admin`.
-- **Info blue is for what you read**: counts, tags ("Pinned", "Manager"),
-  avatars and the first chart series. It is fixed, never the consultancy's
-  colour - a consultancy may brand itself green or red, and an informational
-  tag must never read as a status.
+- **The brand colour is for what you can press**: primary buttons, tabs,
+  links, the active menu item, "New". Orange by default, or the consultancy's
+  own colour, set per tenant from `/admin`. The reference's exact orange
+  (`#fb9858`, `brand-500`) is used for every mark, outline and gradient; white
+  text on it is only 2.2:1, so filled buttons use a deeper step of the same hue
+  (`brand-600`, 3.1:1) and inline links `brand-700` (4.5:1).
+- **Info purple is for what you read**: counts, tags ("Pinned", "Manager") and
+  avatars. It is fixed, never the consultancy's colour - a consultancy may
+  brand itself green or red, and an informational tag must never read as a
+  status.
 - **Three status colours, each meaning exactly one thing everywhere:**
   green = verified/complete, amber = pending/attention, red = rejected/blocked.
-  A tinted tile, row or pill is never decoration: the tint is the tone the
-  figure carries everywhere else, so the amber "Awaiting review" tile and an
-  amber "Pending" pill mean the same thing. That is also why the floating
-  messages button is blue, not the amber of the dashboard it is modelled on.
-- **Rubik**, one 35 KB variable file served from the app's own origin
+  A tinted row or pill is never decoration: the tint is the tone the figure
+  carries everywhere else. That is also why the floating messages button is
+  the brand colour, never amber.
+- **Headline cards** take the reference's gradients by their place in the row -
+  orange, purple, cyan, then indigo - so the colour never claims a status. A
+  figure that needs attention or is blocked carries an amber or red badge on
+  its icon disc, named for screen readers.
+- **Inter**, one 48 KB variable file served from the app's own origin
   (`app/fonts`, OFL), preloaded, with a size-adjusted fallback so nothing
   reflows when it lands. No third-party request; the app still works offline.
-- **Three chart series colours** in fixed order - blue, teal, coral - validated
-  with the dataviz palette checker against the card surface in each theme,
-  every pair: light worst colour-blind separation ΔE 8.4, normal vision 28.6;
-  dark ΔE 8.4 and 23.1; all three at least 3:1 in both. A fourth series is
-  never added. Every chart has a hover, touch and arrow-key readout and a table
-  view.
+- **Chart series colours** in the reference's fixed order - orange, cyan,
+  purple (then indigo and grey as bar-list categories) - validated with the
+  dataviz palette checker against the card surface in each theme, every pair:
+  light worst colour-blind separation ΔE 10.7, normal vision 17.3; dark ΔE
+  12.3 and 17.6. The light orange and cyan are under 3:1 on white, so every
+  chart prints its values or offers a table. Every chart has a hover, touch and
+  arrow-key readout. A line chart brings one series forward - thick, marked,
+  over a wash - and its legend's pills choose which.
 - **Text contrast**: body and secondary text are at least 4.5:1 on cards in
   both themes. Captions (`ink-400`, about 3:1) carry only what is said again
-  elsewhere.
-- **A navy rail in every portal**, its destinations grouped under headings, and
-  collapsible to icons. On a phone it becomes a bottom bar of four destinations
-  plus "More".
-- **Full width.** The content is the whole plane beside the rail, never a
+  elsewhere. White text on the light headline gradients follows the reference
+  and is below that, so those cards keep to large, bold figures.
+- **A white sidebar in every portal**, its destinations grouped under headings,
+  the current one washed in the brand tint with a marker on the sidebar's
+  edge, Settings at its foot, and collapsible to icons. On a phone it becomes a
+  bottom bar of four destinations plus "More".
+- **Full width.** The content is the whole plane beside the sidebar, never a
   column in the middle of it.
 - Status is always a **word**, never a bare colour — for colour-blind users and
   for anyone reading a phone in sunlight.

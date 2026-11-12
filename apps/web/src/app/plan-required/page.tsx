@@ -29,7 +29,7 @@ export default async function PlanRequiredPage({ searchParams }: { searchParams:
         </p>
         <Link
           href={home}
-          className="press mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-brand-600 px-5 text-[14px] font-medium text-white hover:brightness-[0.93]"
+          className="press mt-6 inline-flex h-10 items-center justify-center rounded-full bg-brand-600 px-5 text-[14px] font-semibold text-white hover:brightness-[0.93]"
         >
           Back to the dashboard
         </Link>

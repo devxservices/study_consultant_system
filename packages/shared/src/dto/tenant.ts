@@ -140,6 +140,21 @@ export const addDomainSchema = z.object({ hostname: hostnameSchema });
 export type AddDomainInput = z.infer<typeof addDomainSchema>;
 
 /* ------------------------------------------------------------------ */
+/* Logo uploads                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The largest logo file accepted - a few megabytes, as image uploads usually
+ * allow. It is generous on purpose: every upload is shrunk on arrival (to tens
+ * of kilobytes), so a big export costs nothing later. The pixel cap is what
+ * bounds the work of decoding it.
+ */
+export const LOGO_MAX_BYTES = 5 * 1024 * 1024;
+/** Width x height, so a small file cannot unpack into a gigantic image: 4096 x 4096. */
+export const LOGO_MAX_PIXELS = 4096 * 4096;
+export const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+
+/* ------------------------------------------------------------------ */
 /* Wire shapes                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -149,8 +164,12 @@ export interface TenantBranding {
   slug: string;
   name: string;
   primaryColor: string | null;
-  /** Public URL of the logo, or null for the lettermark. */
+  /** Public URL of the square icon (browser tab, collapsed menu), or null for the monogram. */
   logoUrl: string | null;
+  /** Public URL of the wide logo (expanded menu, sign-in page), or null for icon and name. */
+  fullLogoUrl: string | null;
+  /** Public URL of the icon on white at 180 px, for iPhone home-screen shortcuts; null without an icon. */
+  touchIconUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
 }
@@ -214,6 +233,7 @@ export interface BrandingSettings {
   slug: string;
   primaryColor: string | null;
   logoUrl: string | null;
+  fullLogoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
   platformHost: string;
@@ -228,6 +248,7 @@ export interface TenantSummary {
   statusReason: string | null;
   primaryColor: string | null;
   logoUrl: string | null;
+  fullLogoUrl: string | null;
   /** The platform address it is always reachable at, e.g. acme.example.com. */
   platformHost: string;
   createdAt: string;

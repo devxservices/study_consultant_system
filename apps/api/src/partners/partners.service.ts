@@ -64,7 +64,8 @@ import { tenantIdentity } from '../tenancy/tenant-links';
 import { staffCan } from '../auth/permissions';
 import { hashPassword } from '../auth/local-auth.provider';
 import { open, seal } from '../auth/secret-box';
-import { iso, isoOrNull, page, today, withDocumentNumber } from '../common/db-helpers';
+import { iso, isoOrNull, today, withDocumentNumber } from '../common/db-helpers';
+import { clampPage, countCapped, paged } from '../common/paging';
 import { permissionHolders } from '../common/permission-holders';
 
 export type PartnerRow = typeof partners.$inferSelect;
@@ -167,17 +168,18 @@ export class PartnersService {
     if (q.tier) conds.push(eq(partners.tier, q.tier));
     if (q.q) conds.push(or(ilike(partners.name, `%${q.q}%`), ilike(partners.email, `%${q.q}%`), ilike(partners.contactName, `%${q.q}%`), ilike(partners.number, `%${q.q}%`)));
     const where = and(...conds);
-    const [[count], rows] = await Promise.all([
-      this.db.select({ n: sql<number>`count(*)::int` }).from(partners).where(where),
+    const pageNo = clampPage(q.page, q.pageSize);
+    const [count, rows] = await Promise.all([
+      countCapped(this.db, this.db.select({ one: sql`1` }).from(partners).where(where)),
       this.db
         .select({ id: partners.id })
         .from(partners)
         .where(where)
         .orderBy(sql`case ${partners.status} when 'applied' then 0 when 'onboarding' then 1 when 'active' then 2 when 'suspended' then 3 else 4 end`, asc(partners.name))
         .limit(q.pageSize)
-        .offset((q.page - 1) * q.pageSize),
+        .offset((pageNo - 1) * q.pageSize),
     ]);
-    return page(await this.summaries(tenantId, rows.map((r) => r.id)), count?.n ?? 0, q.page, q.pageSize);
+    return paged(await this.summaries(tenantId, rows.map((r) => r.id)), pageNo, q.pageSize, count);
   }
 
   /** For pickers: every partner but the terminated, by name. */

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { AuthUser } from '@crm/shared';
 import { can } from '@/lib/permissions';
-import { cx } from '../ui';
+import { TAB_BAR, cx, tabClass } from '../ui';
 
 /** Where each part of the money workspace lives, per portal. */
 export interface FinancePaths {
@@ -91,7 +91,7 @@ export function FinanceTabs({ user, active, counts }: { user: AuthUser; active: 
     { key: 'settings', label: 'Settings', href: `${p.base}/settings`, show: a.settings || a.ledger },
   ];
   return (
-    <nav className="-mb-px mb-5 flex gap-1 overflow-x-auto border-b border-line" aria-label="Finance">
+    <nav className={cx(TAB_BAR, 'mb-5 pb-1')} aria-label="Finance">
       {tabs
         .filter((t) => t.show)
         .map((t) => (
@@ -99,10 +99,7 @@ export function FinanceTabs({ user, active, counts }: { user: AuthUser; active: 
             key={t.key}
             href={t.href}
             aria-current={active === t.key ? 'page' : undefined}
-            className={cx(
-              'flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 pb-2.5 pt-1 text-[13.5px] font-medium',
-              active === t.key ? 'border-brand-600 text-ink-950' : 'border-transparent text-ink-500 hover:text-ink-800',
-            )}
+            className={tabClass(active === t.key)}
           >
             {t.label}
             {counts?.[t.key] ? <span className="tnum rounded-full bg-warn-100 px-1.5 text-[11px] font-semibold text-warn-700">{counts[t.key]}</span> : null}

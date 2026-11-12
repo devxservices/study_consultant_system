@@ -28,6 +28,8 @@ interface Brand {
   email: string | null;
   phone: string | null;
   logo: Buffer | null;
+  /** The logo is the wide full logo (no square icon was uploaded), so it is laid out wide. */
+  logoWide: boolean;
   color: string;
   bankDetails: string | null;
   terms: string | null;
@@ -59,7 +61,7 @@ export class PdfService {
   async brand(tenantId: string): Promise<Brand> {
     const [[t], [s], site] = await Promise.all([
       this.db
-        .select({ name: tenants.name, logoKey: tenants.logoKey, color: tenants.primaryColor, email: tenants.contactEmail, phone: tenants.contactPhone })
+        .select({ name: tenants.name, logoKey: tenants.logoKey, fullLogoKey: tenants.fullLogoKey, color: tenants.primaryColor, email: tenants.contactEmail, phone: tenants.contactPhone })
         .from(tenants)
         .where(eq(tenants.id, tenantId))
         .limit(1),
@@ -71,9 +73,12 @@ export class PdfService {
       tenantIdentity(this.db, tenantId),
     ]);
     let logo: Buffer | null = null;
-    if (t?.logoKey) {
+    // The square icon suits a letterhead's corner; a consultancy that only
+    // uploaded the wide logo gets that rather than no logo at all.
+    const logoKey = t?.logoKey ?? t?.fullLogoKey ?? null;
+    if (logoKey) {
       try {
-        const buf = await this.storage.read(t.logoKey);
+        const buf = await this.storage.read(logoKey);
         // PDF can embed PNG and JPEG; anything else (SVG, WebP) is left out.
         if (buf.subarray(0, 4).toString('hex') === '89504e47' || buf.subarray(0, 2).toString('hex') === 'ffd8') logo = buf;
       } catch (err) {
@@ -86,7 +91,9 @@ export class PdfService {
       email: t?.email ?? null,
       phone: t?.phone ?? null,
       logo,
-      color: t?.color && /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : '#3d5af1',
+      logoWide: Boolean(logo && !t?.logoKey),
+      // The web app's default brand fill (brand-600), for an unbranded consultancy.
+      color: t?.color && /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : '#e8702a',
       bankDetails: s?.bankDetails ?? null,
       terms: s?.terms ?? null,
     };
@@ -326,8 +333,13 @@ export class PdfService {
       let y = 90;
       if (brand.logo) {
         try {
-          doc.image(brand.logo, 257, y, { fit: [80, 80] });
-          y += 96;
+          if (brand.logoWide) {
+            doc.image(brand.logo, 187.5, y, { fit: [220, 64], align: 'center', valign: 'center' });
+            y += 80;
+          } else {
+            doc.image(brand.logo, 257, y, { fit: [80, 80] });
+            y += 96;
+          }
         } catch {
           /* an unreadable logo is left out */
         }
@@ -459,24 +471,34 @@ function clean(text: string): string {
 function header(doc: Doc, brand: Brand, title: string, number: string, meta: [string, string][]) {
   const top = doc.y;
   let left = 48;
+  let nameTop = top;
   if (brand.logo) {
     try {
-      doc.image(brand.logo, 48, top, { fit: [64, 64] });
-      left = 124;
+      if (brand.logoWide) {
+        // A wide logo gets its own line, with the name and contacts beneath it.
+        doc.image(brand.logo, 48, top, { fit: [180, 44] });
+        nameTop = top + 54;
+      } else {
+        doc.image(brand.logo, 48, top, { fit: [64, 64] });
+        left = 124;
+      }
     } catch {
       /* an unreadable logo is left out */
     }
   }
-  doc.font('Helvetica-Bold').fontSize(16).fillColor(INK).text(clean(brand.name), left, top, { width: 260 });
+  doc.font('Helvetica-Bold').fontSize(16).fillColor(INK).text(clean(brand.name), left, nameTop, { width: 240 });
   doc.font('Helvetica').fontSize(9).fillColor(MUTED);
   for (const line of [brand.email, brand.phone, brand.origin.replace(/^https?:\/\//, '')].filter(Boolean) as string[]) {
     doc.text(clean(line), left, doc.y, { width: 260 });
   }
+  // Either column can be the taller one (a wide logo, a name over two lines),
+  // so the rule goes under whichever ends lower.
+  const leftBottom = doc.y;
   doc.font('Helvetica-Bold').fontSize(20).fillColor(brand.color).text(title, 300, top, { width: 247, align: 'right' });
   doc.font('Helvetica-Bold').fontSize(11).fillColor(INK).text(clean(number), 300, doc.y, { width: 247, align: 'right' });
   doc.font('Helvetica').fontSize(9).fillColor(MUTED);
   for (const [k, v] of meta) doc.text(clean(`${k}: ${v}`), 300, doc.y, { width: 247, align: 'right' });
-  doc.y = Math.max(doc.y, top + 72) + 16;
+  doc.y = Math.max(doc.y, leftBottom, top + 72) + 16;
   doc.x = 48;
   doc.moveTo(48, doc.y).lineTo(547, doc.y).strokeColor(LINE).lineWidth(1).stroke();
   doc.moveDown(0.8);

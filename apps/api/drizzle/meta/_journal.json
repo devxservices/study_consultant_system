@@ -120,6 +120,20 @@
       "when": 1792307332015,
       "tag": "0016_platform_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794462927193,
+      "tag": "0017_scale",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794479212659,
+      "tag": "0018_full_logo",
+      "breakpoints": true
     }
   ]
 }

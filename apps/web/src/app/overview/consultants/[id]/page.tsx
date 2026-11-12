@@ -13,7 +13,7 @@ import { RoleAssigner } from '@/components/team/role-assigner';
 import { ApiError, apiFetch, qs } from '@/lib/api';
 import { enabledModules } from '@/lib/entitlements';
 import { relativeDays } from '@/lib/format';
-import { Avatar, Card, EmptyState, PageHeader, Panel, PanelLink, Pill, StatCard, cx } from '@/components/ui';
+import { Avatar, Card, EmptyState, PageHeader, Panel, PanelLink, Pill, StatCard, TAB_BAR, cx, tabClass } from '@/components/ui';
 import { Pagination } from '@/components/client-table';
 import { ActionButton } from '@/components/forms';
 import { PermissionEditor } from '@/components/team/permission-editor';
@@ -93,18 +93,13 @@ export default async function MemberPage({
           </div>
         </div>
 
-        <nav className="-mb-4 mt-4 flex gap-1 overflow-x-auto border-t border-line pt-2 sm:-mb-5" aria-label="Sections">
+        <nav className={cx(TAB_BAR, 'mt-4 border-t border-line pt-4')} aria-label="Sections">
           {TABS.map((t) => (
             <Link
               key={t.key}
               href={`/overview/consultants/${id}${t.key === 'permissions' ? '' : `?tab=${t.key}`}`}
               aria-current={tab === t.key ? 'page' : undefined}
-              className={cx(
-                'whitespace-nowrap border-b-2 px-3 pb-2.5 pt-1.5 text-[13.5px] font-medium transition-colors',
-                tab === t.key
-                  ? 'border-brand-600 text-brand-700'
-                  : 'border-transparent text-ink-500 hover:text-ink-800',
-              )}
+              className={tabClass(tab === t.key, 'sm')}
             >
               {t.label}
             </Link>

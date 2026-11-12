@@ -25,6 +25,8 @@ import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { tenantOf } from '../tenancy/tenant-resolver.service';
 import { seesAll } from '../auth/permissions';
+import { StatsCacheService } from '../stats/stats-cache.service';
+import { clampPage, countCapped, paged } from '../common/paging';
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 
@@ -51,6 +53,7 @@ export class TasksService {
     @Inject(DB) private readonly db: Db,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly stats: StatsCacheService,
   ) {}
 
   /** Expects `clients` left-joined on tasks.client_id. */
@@ -110,12 +113,12 @@ export class TasksService {
         break;
     }
     const where = and(...conditions);
+    const page = clampPage(query.page, query.pageSize);
 
-    const countQuery = this.db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(tasks)
-      .leftJoin(clients, eq(clients.id, tasks.clientId))
-      .where(where);
+    const countQuery = countCapped(
+      this.db,
+      this.db.select({ one: sql`1` }).from(tasks).leftJoin(clients, eq(clients.id, tasks.clientId)).where(where),
+    );
 
     const priorityRank = sql`case ${tasks.priority} when 'urgent' then 0 when 'high' then 1 when 'normal' then 2 else 3 end`;
     const order =
@@ -123,28 +126,31 @@ export class TasksService {
         ? [desc(tasks.completedAt)]
         : [sql`${tasks.dueAt} asc nulls last`, asc(priorityRank), desc(tasks.createdAt)];
 
-    const [[total], rows] = await Promise.all([
+    const [count, rows] = await Promise.all([
       countQuery,
       this.baseQuery()
         .where(where)
         .orderBy(...order)
         .limit(query.pageSize)
-        .offset((query.page - 1) * query.pageSize),
+        .offset((page - 1) * query.pageSize),
     ]);
 
-    const n = total?.n ?? 0;
-    return {
-      items: rows.map(toView),
-      page: query.page,
-      pageSize: query.pageSize,
-      total: n,
-      totalPages: Math.max(1, Math.ceil(n / query.pageSize)),
-    };
+    return paged(rows.map(toView), page, query.pageSize, count);
   }
 
-  /** The badge numbers: the actor's own for a consultant, everyone's for a manager. */
+  /**
+   * The badge numbers: the actor's own for a consultant, everyone's for a
+   * manager. On every page's menu, so through the stats cache, keyed by
+   * everything `scope()` reads - the role, the consultant, the person (their
+   * own assignments count for a consultant) and "mine".
+   */
   async counts(actor: AuthUser, mine: boolean): Promise<TaskCounts> {
     this.assertStaff(actor);
+    const key = `tasks:${actor.role}:${actor.consultantId ?? '-'}:${actor.id}:${mine ? 'mine' : 'all'}`;
+    return this.stats.get(tenantOf(actor), key, () => this.computeCounts(actor, mine));
+  }
+
+  private async computeCounts(actor: AuthUser, mine: boolean): Promise<TaskCounts> {
     const now = new Date();
     const { start, end } = dayBounds();
     const [row] = await this.db
